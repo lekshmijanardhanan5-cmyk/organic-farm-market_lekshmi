@@ -1,4 +1,15 @@
 client/node_modules
 server/node_modules
-.env
-dist/
+client/.env
+server/.env
+client/dist/
+server/dist/
+client/.vscode/
+server/.vscode/
+client/.idea/
+server/.idea/
+client/.DS_Store/
+server/.DS_Store/
+client/.gitignore/
+server/.gitignore/
+client/.gitignore/
