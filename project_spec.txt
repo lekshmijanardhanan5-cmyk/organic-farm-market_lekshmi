@@ -1,0 +1,98 @@
+Organic farm market System 
+
+1. PROJECT OVERVIEW
+-------------------
+Project Title:Organic farm market
+Tech Stack: MERN (MongoDB, Express, React, Node.js)
+
+2. PROBLEM STATEMENT
+--------------------
+“Lack of a transparent, direct-to-consumer platform for organic farmers results in reduced farmer income, higher consumer prices, and food wastage.”
+
+3. PROPOSED SOLUTION
+--------------------
+A digital platform that directly connects verified local organic farmers with consumers, enabling transparent pricing, reduced wastage, and assured product authenticity.
+
+4. USER ROLES & PERMISSIONS
+---------------------------
+1 Admin
+Farmer approve / reject
+Products & orders monitor
+Fake users block
+Purpose: System control & trust
+2️ Farmer
+Profile create
+Products add / update
+Price set
+Orders manage
+ Purpose: Direct selling
+3️ Customer
+Products view
+Order place
+Review give
+ Purpose: Buy organic products
+
+5. DATABASE STRUCTURE (Schemas)
+-------------------------------
+
+   A. User Schema
+Name (String)
+Email (String, Unique)
+Password (String, Hashed)
+Role (String: 'admin' | 'farmer' | 'customer')
+CreatedAt (Timestamp)
+Why role expanded?
+'user' ennu vague aanu. Examiner question varum. Avoid cheythu.
+B. Product Schema (Organic Items)
+Title (String, e.g., "Organic Tomato")
+Description (String, e.g., "Naturally grown, pesticide-free")
+Price (Number)
+Category (String, e.g., "Vegetables", "Fruits")
+ImageURL (String)
+FarmerID (Reference to User)
+IsAvailable (Boolean, Default: true)
+CreatedAt (Timestamp)
+FarmerID illaatha product = logical mistake. Nee avoid cheythu ithu.
+C. Order Schema
+UserID (Reference to User – Customer)
+Items (Array of Objects)
+ItemID (Reference to Product)
+Quantity (Number)
+TotalAmount (Number)
+Status (String: 'Pending' | 'Accepted' | 'Packed' | 'Delivered')
+CreatedAt (Timestamp)
+
+
+6. FEATURE WORKFLOW (The "User Journey")
+----------------------------------------
+1. Login
+User logs in and lands on the Product Page.
+2. Browse
+User sees a grid/list of Organic Products (fetched from database).
+3. Order
+User clicks “Order Now” on a selected product and enters quantity.
+4. Database
+The system creates a new Order document in MongoDB with status Pending.
+5. Farmer/Admin View
+Farmer/Admin refreshes dashboard and sees the new order.
+6. Update Status
+Farmer/Admin clicks “Mark as Packed / Ready”.
+7. User Notification
+User sees the order status updated (Pending → Ready/Delivered).
+7. API ENDPOINTS (The URL Rules)
+--------------------------------
+Authentication
+POST /api/auth/register → Register new user
+POST /api/auth/login → Login user
+ Users
+GET /api/users/profile → Get logged-in user profile
+ Products
+GET /api/products → Get list of organic products
+POST /api/products → Create new product (Farmer/Admin)
+PUT /api/products/:id → Update product (Farmer/Admin)
+DELETE /api/products/:id → Delete product (Admin only)
+ Orders
+POST /api/orders → Place new order
+GET /api/orders/user → Get user orders
+GET /api/orders/farmer → Get farmer orders
+PUT /api/orders/:id/status → Update order status (Farmer/Admin)
