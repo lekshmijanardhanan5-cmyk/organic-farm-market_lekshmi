@@ -41,8 +41,6 @@ Email (String, Unique)
 Password (String, Hashed)
 Role (String: 'admin' | 'farmer' | 'customer')
 CreatedAt (Timestamp)
-Why role expanded?
-'user' ennu vague aanu. Examiner question varum. Avoid cheythu.
 B. Product Schema (Organic Items)
 Title (String, e.g., "Organic Tomato")
 Description (String, e.g., "Naturally grown, pesticide-free")
