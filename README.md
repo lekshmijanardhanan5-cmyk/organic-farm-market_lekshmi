@@ -57,6 +57,19 @@ npm install
 npm run dev      # or: npm start
 ```
 
+Optional: seed demo data (recommended for presentation):
+
+```bash
+cd server
+npm run seed
+```
+
+Demo accounts created by seeding:
+
+- Admin: `admin@example.com` / `password123`
+- Farmer: `farmer@example.com` / `password123`
+- Customer: `customer@example.com` / `password123`
+
 You should see:
 
 - Console: `MongoDB connected: ...` and `Server listening on port ...`
