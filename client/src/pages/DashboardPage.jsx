@@ -11,10 +11,119 @@ function Protected({ children }) {
   return children
 }
 
+function CustomerProfile() {
+  const api = useApi()
+  const { user, setUser } = useAuth()
+  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '' })
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setForm({ name: user.name || '', email: user.email || '' })
+    }
+  }, [user])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+    try {
+      const data = await api.put('/api/auth/profile', form)
+      setMessage('Profile updated successfully!')
+      setUser({ ...user, ...data.user })
+    } catch (err) {
+      setMessage(err.message || 'Failed to update profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <h3>My Profile</h3>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 400 }}>
+        <input
+          placeholder="Name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          required
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? 'Updating...' : 'Update Profile'}
+        </button>
+      </form>
+      {message && <p style={{ color: message.includes('success') ? 'green' : 'red', marginTop: '0.5rem' }}>{message}</p>}
+    </div>
+  )
+}
+
+function CustomerStats() {
+  const api = useApi()
+  const [stats, setStats] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await api.get('/api/customer/stats')
+        setStats(data)
+      } catch (err) {
+        setError(err.message)
+      }
+    }
+    load()
+  }, [])
+
+  if (error) return <p style={{ color: 'red' }}>{error}</p>
+  if (!stats) return <p>Loading...</p>
+
+  return (
+    <div>
+      <h3>My Dashboard</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
+          <strong>Total Orders</strong>
+          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0' }}>{stats.orders.total}</p>
+        </div>
+        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
+          <strong>Total Reviews</strong>
+          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0' }}>{stats.reviews.total}</p>
+        </div>
+        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
+          <strong>Total Spent</strong>
+          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: 'green' }}>₹{stats.totalSpent}</p>
+        </div>
+      </div>
+      {stats.orders.byStatus && Object.keys(stats.orders.byStatus).length > 0 && (
+        <div style={{ marginTop: '1rem' }}>
+          <h4>Orders by Status</h4>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+            {Object.entries(stats.orders.byStatus).map(([status, count]) => (
+              <div key={status} style={{ border: '1px solid #ccc', padding: '0.5rem 1rem', borderRadius: '4px' }}>
+                <strong>{status}:</strong> {count}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CustomerOrders() {
   const api = useApi()
   const [orders, setOrders] = useState([])
+  const [filter, setFilter] = useState('')
   const [error, setError] = useState('')
+  const [expandedOrder, setExpandedOrder] = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -28,20 +137,77 @@ function CustomerOrders() {
     load()
   }, [])
 
+  const getStatusColor = (status) => {
+    const colors = {
+      Pending: '#ffc107',
+      Accepted: '#17a2b8',
+      Packed: '#007bff',
+      Delivered: '#28a745',
+    }
+    return colors[status] || '#6c757d'
+  }
+
+  const filteredOrders = filter ? orders.filter((o) => o.status === filter) : orders
+
   if (error) return <p style={{ color: 'red' }}>{error}</p>
 
   return (
     <div>
       <h3>My Orders</h3>
-      {orders.length === 0 && <p>No orders yet.</p>}
-      {orders.map((o) => (
-        <div key={o._id} style={{ border: '1px solid #ccc', padding: '0.5rem', marginBottom: '0.5rem' }}>
-          <p>
-            <strong>Status:</strong> {o.status}
-          </p>
-          <p>
-            <strong>Total:</strong> ₹{o.totalAmount}
-          </p>
+      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <label>Filter by status:</label>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <option value="">All Orders</option>
+          <option value="Pending">Pending</option>
+          <option value="Accepted">Accepted</option>
+          <option value="Packed">Packed</option>
+          <option value="Delivered">Delivered</option>
+        </select>
+        <span style={{ marginLeft: '1rem' }}>Total: {filteredOrders.length}</span>
+      </div>
+      {filteredOrders.length === 0 && <p>No orders found.</p>}
+      {filteredOrders.map((o) => (
+        <div key={o._id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+            <div>
+              <p style={{ margin: '0.25rem 0' }}>
+                <strong>Order ID:</strong> {o._id.slice(-8)} | <strong>Date:</strong> {new Date(o.createdAt).toLocaleString()}
+              </p>
+              <p style={{ margin: '0.25rem 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                Total: ₹{o.totalAmount}
+              </p>
+            </div>
+            <span
+              style={{
+                padding: '0.25rem 0.75rem',
+                borderRadius: '4px',
+                backgroundColor: getStatusColor(o.status),
+                color: 'white',
+                fontWeight: 'bold',
+              }}
+            >
+              {o.status}
+            </span>
+          </div>
+          <button
+            onClick={() => setExpandedOrder(expandedOrder === o._id ? null : o._id)}
+            style={{ marginBottom: '0.5rem', background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            {expandedOrder === o._id ? 'Hide Details' : 'Show Details'}
+          </button>
+          {expandedOrder === o._id && (
+            <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+              <strong>Items:</strong>
+              <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
+                {o.items.map((item, idx) => (
+                  <li key={idx} style={{ marginBottom: '0.25rem' }}>
+                    {item.product?.title || 'Product removed'} - Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹
+                    {(item.quantity * (item.product?.price || 0)).toFixed(2)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -766,7 +932,13 @@ function DashboardPage() {
         </p>
         <button onClick={logout}>Logout</button>
         <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          {user?.role === 'customer' && <Link to="customer-orders">My Orders</Link>}
+          {user?.role === 'customer' && (
+            <>
+              <Link to="customer/stats">Dashboard</Link>
+              <Link to="customer/profile">Profile</Link>
+              <Link to="customer/orders">My Orders</Link>
+            </>
+          )}
           {user?.role === 'farmer' && (
             <>
               <Link to="farmer/stats">Dashboard</Link>
@@ -795,11 +967,13 @@ function DashboardPage() {
                 ) : user?.role === 'admin' ? (
                   <Navigate to="admin/stats" replace />
                 ) : (
-                  <Navigate to="customer-orders" replace />
+                  <Navigate to="customer/stats" replace />
                 )
               }
             />
-            <Route path="customer-orders" element={<CustomerOrders />} />
+            <Route path="customer/stats" element={<CustomerStats />} />
+            <Route path="customer/profile" element={<CustomerProfile />} />
+            <Route path="customer/orders" element={<CustomerOrders />} />
             <Route path="farmer/stats" element={<FarmerStats />} />
             <Route path="farmer/profile" element={<FarmerProfile />} />
             <Route path="farmer/products" element={<FarmerProducts />} />
