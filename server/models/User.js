@@ -23,6 +23,17 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "farmer", "customer"],
       default: "customer",
     },
+    isApproved: {
+      type: Boolean,
+      default: function() {
+        // Farmers need approval, others are auto-approved
+        return this.role !== "farmer";
+      },
+    },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

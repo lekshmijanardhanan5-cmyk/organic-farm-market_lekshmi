@@ -1,15 +1,25 @@
 const express = require("express");
 const Product = require("../models/Product");
+const User = require("../models/User");
 const auth = require("../middleware/auth");
 const allowRoles = require("../middleware/roles");
 
 const router = express.Router();
 
-// Get all products (public)
+// Get all products (public - only from approved farmers)
 router.get("/", async (_req, res) => {
   try {
-    const products = await Product.find().populate("farmer", "name email role");
-    return res.json(products);
+    const products = await Product.find()
+      .populate({
+        path: "farmer",
+        select: "name email role isApproved",
+        match: { isApproved: true, isBlocked: false },
+      })
+      .lean();
+    
+    // Filter out products where farmer is null (not approved or blocked)
+    const validProducts = products.filter((p) => p.farmer);
+    return res.json(validProducts);
   } catch (err) {
     return res.status(500).json({ message: "Failed to fetch products", error: err.message });
   }
@@ -23,6 +33,17 @@ router.post("/", auth, allowRoles("farmer", "admin"), async (req, res) => {
   }
 
   try {
+    // If farmer, check if approved and not blocked
+    if (req.user.role === "farmer") {
+      const farmer = await User.findById(req.user.id);
+      if (!farmer.isApproved) {
+        return res.status(403).json({ message: "Farmer account not approved yet" });
+      }
+      if (farmer.isBlocked) {
+        return res.status(403).json({ message: "Account is blocked" });
+      }
+    }
+
     const farmer = req.user.role === "admin" && farmerId ? farmerId : req.user.id;
     const product = await Product.create({
       title,

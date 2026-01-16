@@ -29,6 +29,7 @@ async function seed() {
         email: "farmer@example.com",
         password,
         role: "farmer",
+        isApproved: true, // Pre-approved for demo
       },
       {
         name: "Customer User",
