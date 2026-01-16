@@ -87,13 +87,20 @@ router.put("/:id", auth, allowRoles("farmer", "admin"), async (req, res) => {
   }
 });
 
-// Delete product (admin only)
-router.delete("/:id", auth, allowRoles("admin"), async (req, res) => {
+// Delete product (admin or owner farmer)
+router.delete("/:id", auth, allowRoles("admin", "farmer"), async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
+
+    const isOwner = product.farmer.toString() === req.user.id;
+    if (req.user.role !== "admin" && !isOwner) {
+      return res.status(403).json({ message: "Not allowed to delete this product" });
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
     return res.json({ message: "Product deleted" });
   } catch (err) {
     return res.status(500).json({ message: "Failed to delete product", error: err.message });

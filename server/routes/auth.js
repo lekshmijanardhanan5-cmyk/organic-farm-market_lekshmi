@@ -84,5 +84,32 @@ router.get("/profile", auth, async (req, res) => {
   }
 });
 
+// Update profile
+router.put("/profile", auth, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if email is being changed and if it's already taken
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ email });
+      if (existing) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      user.email = email;
+    }
+
+    if (name) user.name = name;
+    await user.save();
+
+    return res.json({ message: "Profile updated", user });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to update profile", error: err.message });
+  }
+});
+
 module.exports = router;
 
