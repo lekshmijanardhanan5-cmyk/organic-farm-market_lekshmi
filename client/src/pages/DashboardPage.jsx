@@ -13,25 +13,107 @@ function Protected({ children }) {
 
 function CustomerProfile() {
   const api = useApi()
-  const { user, setUser } = useAuth()
-  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '' })
+  const { user, setUser, token } = useAuth()
+  const [form, setForm] = useState({ 
+    name: '', 
+    phoneNumber: '', 
+    address: '', 
+    email: '', 
+    place: '', 
+    landmark: '', 
+    pincode: '' 
+  })
+  const [originalName, setOriginalName] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+  const [errors, setErrors] = useState({})
 
+  // Fetch full profile data on mount
   useEffect(() => {
-    if (user) {
-      setForm({ name: user.name || '', email: user.email || '' })
+    const fetchProfile = async () => {
+      if (!token) {
+        setFetching(false)
+        return
+      }
+      try {
+        const data = await api.get('/api/auth/profile')
+        setOriginalName(data.name || '')
+        setForm({
+          name: '', // Name field will show placeholder only
+          phoneNumber: data.phoneNumber || '',
+          address: data.address || '',
+          email: data.email || '',
+          place: data.place || '',
+          landmark: data.landmark || '',
+          pincode: data.pincode || ''
+        })
+      } catch (err) {
+        console.error('Failed to fetch profile:', err)
+        setMessage('Failed to load profile data')
+      } finally {
+        setFetching(false)
+      }
     }
-  }, [user])
+    fetchProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    // Validate email
+    if (form.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(form.email)) {
+        newErrors.email = 'Invalid email format'
+      }
+    }
+
+    // Validate phone number (10 digits)
+    if (form.phoneNumber) {
+      const phoneRegex = /^\d{10}$/
+      if (!phoneRegex.test(form.phoneNumber)) {
+        newErrors.phoneNumber = 'Phone number must be exactly 10 digits'
+      }
+    }
+
+    // Validate pincode (6 digits)
+    if (form.pincode) {
+      const pincodeRegex = /^\d{6}$/
+      if (!pincodeRegex.test(form.pincode)) {
+        newErrors.pincode = 'Pincode must be exactly 6 digits'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setMessage('')
+    setErrors({})
+
+    if (!validateForm()) {
+      setMessage('Please fix the validation errors')
+      return
+    }
+
+    setLoading(true)
     try {
-      const data = await api.put('/api/auth/profile', form)
+      // Use original name if name field is empty, otherwise use entered name
+      const submitData = {
+        ...form,
+        name: form.name.trim() || originalName
+      }
+      const data = await api.put('/api/auth/profile', submitData)
       setMessage('Profile updated successfully!')
       setUser({ ...user, ...data.user })
+      // Update original name if name was changed
+      if (form.name.trim()) {
+        setOriginalName(form.name.trim())
+      }
     } catch (err) {
       setMessage(err.message || 'Failed to update profile')
     } finally {
@@ -39,28 +121,146 @@ function CustomerProfile() {
     }
   }
 
+  if (fetching) {
+    return <div className="loading">Loading profile...</div>
+  }
+
   return (
-    <div>
-      <h3>My Profile</h3>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 400 }}>
-        <input
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          required
-        />
-        <button type="submit" disabled={loading}>
+    <div className="card">
+      <h3 style={{ marginTop: 0, marginBottom: '2rem' }}>My Profile</h3>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 600 }}>
+        {/* Name */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Name</label>
+          <input
+            type="text"
+            className="input"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Enter name"
+            style={{ width: '100%', padding: '0.75rem' }}
+          />
+        </div>
+
+        {/* Phone Number */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Phone Number</label>
+          <input
+            type="text"
+            className="input"
+            value={form.phoneNumber}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '') // Only allow digits
+              setForm({ ...form, phoneNumber: value })
+              if (errors.phoneNumber) setErrors({ ...errors, phoneNumber: '' })
+            }}
+            placeholder="10 digits"
+            maxLength={10}
+            style={{ width: '100%', padding: '0.75rem' }}
+          />
+          {errors.phoneNumber && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.phoneNumber}</span>}
+        </div>
+
+        {/* Address */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Address</label>
+          <textarea
+            className="input"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            rows={3}
+            style={{ width: '100%', padding: '0.75rem', resize: 'vertical' }}
+          />
+        </div>
+
+        {/* Email */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Email</label>
+          <input
+            type="email"
+            className="input"
+            value={form.email}
+            onChange={(e) => {
+              setForm({ ...form, email: e.target.value })
+              if (errors.email) setErrors({ ...errors, email: '' })
+            }}
+            onFocus={(e) => e.target.select()}
+            required
+            style={{ width: '100%', padding: '0.75rem' }}
+          />
+          {errors.email && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.email}</span>}
+        </div>
+
+        {/* Place */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Place</label>
+          <input
+            type="text"
+            className="input"
+            value={form.place}
+            onChange={(e) => setForm({ ...form, place: e.target.value })}
+            style={{ width: '100%', padding: '0.75rem' }}
+          />
+        </div>
+
+        {/* Landmark */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Landmark</label>
+          <input
+            type="text"
+            className="input"
+            value={form.landmark}
+            onChange={(e) => setForm({ ...form, landmark: e.target.value })}
+            style={{ width: '100%', padding: '0.75rem' }}
+          />
+        </div>
+
+        {/* Pincode */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Pincode</label>
+          <input
+            type="text"
+            className="input"
+            value={form.pincode}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '') // Only allow digits
+              setForm({ ...form, pincode: value })
+              if (errors.pincode) setErrors({ ...errors, pincode: '' })
+            }}
+            placeholder="6 digits"
+            maxLength={6}
+            style={{ width: '100%', padding: '0.75rem' }}
+          />
+          {errors.pincode && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.pincode}</span>}
+        </div>
+
+        {/* Update Profile Button */}
+        <button 
+          type="submit" 
+          className="btn btn-primary" 
+          disabled={loading}
+          style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem 2rem',
+            fontSize: '1rem',
+            alignSelf: 'flex-start'
+          }}
+        >
           {loading ? 'Updating...' : 'Update Profile'}
         </button>
       </form>
-      {message && <p style={{ color: message.includes('success') ? 'green' : 'red', marginTop: '0.5rem' }}>{message}</p>}
+      {message && (
+        <div style={{ 
+          marginTop: '1.5rem', 
+          padding: '0.75rem 1rem',
+          backgroundColor: message.includes('success') ? '#d4edda' : '#f8d7da',
+          border: `1px solid ${message.includes('success') ? '#c3e6cb' : '#f5c6cb'}`,
+          borderRadius: '4px',
+          color: message.includes('success') ? '#155724' : '#721c24'
+        }}>
+          {message}
+        </div>
+      )}
     </div>
   )
 }
@@ -157,15 +357,32 @@ function CustomerOrders() {
   // Check review eligibility for products in delivered orders
   useEffect(() => {
     const checkReviews = async () => {
+      if (!token || orders.length === 0) {
+        return
+      }
+
       const deliveredOrders = orders.filter(o => o.status === 'Delivered')
+      if (deliveredOrders.length === 0) {
+        setProductReviews({})
+        return
+      }
+
       const productIds = new Set()
       deliveredOrders.forEach(order => {
         order.items.forEach(item => {
-          if (item.product?._id) {
-            productIds.add(item.product._id)
+          // Handle both populated and unpopulated product references
+          const productId = item.product?._id || item.product
+          if (productId) {
+            // Convert to string to ensure consistent key format
+            productIds.add(String(productId))
           }
         })
       })
+
+      if (productIds.size === 0) {
+        setProductReviews({})
+        return
+      }
 
       const reviewStatus = {}
       for (const productId of productIds) {
@@ -174,16 +391,15 @@ function CustomerOrders() {
           reviewStatus[productId] = data
         } catch (err) {
           console.error(`Failed to check review for product ${productId}:`, err)
-          reviewStatus[productId] = { canReview: false, hasReviewed: false }
+          reviewStatus[productId] = { canReview: false, hasReviewed: false, hasDeliveredOrder: false }
         }
       }
       setProductReviews(reviewStatus)
     }
 
-    if (token && orders.length > 0) {
-      checkReviews()
-    }
-  }, [orders, token, api])
+    checkReviews()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, token])
 
   const getStatusColor = (status) => {
     const colors = {
@@ -262,7 +478,10 @@ function CustomerOrders() {
                   <strong style={{ display: 'block', marginBottom: '0.75rem' }}>Order Items:</strong>
                   <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'none' }}>
                     {o.items.map((item, idx) => {
-                      const productId = item.product?._id
+                      // Convert product ID to string for consistent matching
+                      // Handle both populated and unpopulated product references
+                      const rawProductId = item.product?._id || item.product
+                      const productId = rawProductId ? String(rawProductId) : null
                       const reviewInfo = productId ? productReviews[productId] : null
                       const canReview = reviewInfo?.canReview || false
                       const hasReviewed = reviewInfo?.hasReviewed || false
@@ -281,20 +500,28 @@ function CustomerOrders() {
                               <div style={{ marginLeft: '1rem' }}>
                                 {hasReviewed ? (
                                   <span style={{ color: '#28a745', fontSize: '0.9rem' }}>✓ Reviewed</span>
-                                ) : canReview ? (
-                                  <button
-                                    onClick={() => setReviewingProduct(reviewingProduct === productId ? null : productId)}
-                                    className="btn"
-                                    style={{ 
-                                      backgroundColor: '#28a745', 
-                                      color: 'white', 
-                                      fontSize: '0.85rem', 
-                                      padding: '0.4rem 0.8rem' 
-                                    }}
-                                  >
-                                    {reviewingProduct === productId ? 'Cancel' : 'Review'}
-                                  </button>
-                                ) : null}
+                                ) : reviewInfo ? (
+                                  canReview ? (
+                                    <button
+                                      onClick={() => setReviewingProduct(reviewingProduct === productId ? null : productId)}
+                                      className="btn"
+                                      style={{ 
+                                        backgroundColor: '#28a745', 
+                                        color: 'white', 
+                                        fontSize: '0.85rem', 
+                                        padding: '0.4rem 0.8rem' 
+                                      }}
+                                    >
+                                      {reviewingProduct === productId ? 'Cancel' : 'Review'}
+                                    </button>
+                                  ) : (
+                                    <span style={{ color: '#6c757d', fontSize: '0.85rem' }}>
+                                      {reviewInfo.hasDeliveredOrder ? 'Already reviewed' : 'Cannot review'}
+                                    </span>
+                                  )
+                                ) : (
+                                  <span style={{ color: '#6c757d', fontSize: '0.85rem' }}>Checking...</span>
+                                )}
                               </div>
                             )}
                           </div>

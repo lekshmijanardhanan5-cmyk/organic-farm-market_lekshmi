@@ -14,6 +14,31 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    phoneNumber: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    address: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    place: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    landmark: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    pincode: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     password: {
       type: String,
       required: true,

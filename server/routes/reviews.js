@@ -90,27 +90,34 @@ router.get("/my-reviews", auth, allowRoles("customer"), async (req, res) => {
 // Check if user can review a product (has delivered order)
 router.get("/can-review/:productId", auth, allowRoles("customer"), async (req, res) => {
   try {
+    const productId = req.params.productId;
+    
+    // Check if user has a delivered order with this product
     const hasDeliveredOrder = await Order.findOne({
       user: req.user.id,
       status: "Delivered",
       items: {
         $elemMatch: {
-          product: req.params.productId,
+          product: productId,
         },
       },
     });
 
+    // Check if user has already reviewed this product
     const hasReviewed = await Review.findOne({
       user: req.user.id,
-      product: req.params.productId,
+      product: productId,
     });
 
+    const canReview = !!hasDeliveredOrder && !hasReviewed;
+
     return res.json({
-      canReview: !!hasDeliveredOrder && !hasReviewed,
+      canReview,
       hasDeliveredOrder: !!hasDeliveredOrder,
       hasReviewed: !!hasReviewed,
     });
   } catch (err) {
+    console.error("Error checking review eligibility:", err);
     return res.status(500).json({ message: "Failed to check review eligibility", error: err.message });
   }
 });

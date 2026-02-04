@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useApi, apiRequest } from '../services/api'
 
 function ProductCard({ product, user, api, onOrderSuccess }) {
+  const { token } = useAuth()
   const [quantity, setQuantity] = useState(1)
   const [reviews, setReviews] = useState([])
   const [showReviews, setShowReviews] = useState(false)
@@ -20,10 +21,13 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
   }, [showReviews])
 
   useEffect(() => {
-    if (user?.role === 'customer' && product._id) {
+    if (user?.role === 'customer' && product._id && token) {
       checkCanReview()
+    } else {
+      setCanReview(false)
     }
-  }, [user, product._id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, product._id, token])
 
   const loadReviews = async () => {
     setLoadingReviews(true)
@@ -38,18 +42,14 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
   }
 
   const checkCanReview = async () => {
-    if (!user || user.role !== 'customer') {
+    if (!user || user.role !== 'customer' || !product._id) {
       setCanReview(false)
       return
     }
     setCheckingReview(true)
     try {
-      const token = localStorage.getItem('token')
-      const data = await apiRequest(`/api/reviews/can-review/${product._id}`, {
-        method: 'GET',
-        token
-      })
-      setCanReview(data.canReview || false)
+      const data = await api.get(`/api/reviews/can-review/${product._id}`)
+      setCanReview(data?.canReview || false)
     } catch (err) {
       console.error('Failed to check review eligibility:', err)
       setCanReview(false)

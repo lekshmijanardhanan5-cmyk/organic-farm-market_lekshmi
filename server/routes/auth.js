@@ -101,25 +101,56 @@ router.get("/profile", auth, async (req, res) => {
 // Update profile
 router.put("/profile", auth, async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, phoneNumber, address, place, landmark, pincode } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if email is being changed and if it's already taken
-    if (email && email !== user.email) {
-      const existing = await User.findOne({ email });
-      if (existing) {
-        return res.status(400).json({ message: "Email already in use" });
+    // Validate email format if provided
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
       }
-      user.email = email;
+      // Check if email is being changed and if it's already taken
+      if (email !== user.email) {
+        const existing = await User.findOne({ email });
+        if (existing) {
+          return res.status(400).json({ message: "Email already in use" });
+        }
+        user.email = email;
+      }
+    }
+
+    // Validate phone number (10 digits)
+    if (phoneNumber !== undefined) {
+      const phoneRegex = /^\d{10}$/;
+      if (phoneNumber && !phoneRegex.test(phoneNumber)) {
+        return res.status(400).json({ message: "Phone number must be exactly 10 digits" });
+      }
+      user.phoneNumber = phoneNumber || "";
+    }
+
+    // Validate pincode (6 digits)
+    if (pincode !== undefined) {
+      const pincodeRegex = /^\d{6}$/;
+      if (pincode && !pincodeRegex.test(pincode)) {
+        return res.status(400).json({ message: "Pincode must be exactly 6 digits" });
+      }
+      user.pincode = pincode || "";
     }
 
     if (name) user.name = name;
+    if (address !== undefined) user.address = address || "";
+    if (place !== undefined) user.place = place || "";
+    if (landmark !== undefined) user.landmark = landmark || "";
+
     await user.save();
 
-    return res.json({ message: "Profile updated", user });
+    // Return user without password
+    const userResponse = await User.findById(user._id).select("-password");
+    return res.json({ message: "Profile updated", user: userResponse });
   } catch (err) {
     return res.status(500).json({ message: "Failed to update profile", error: err.message });
   }
