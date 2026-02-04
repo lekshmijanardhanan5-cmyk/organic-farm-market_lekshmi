@@ -610,21 +610,119 @@ function CustomerOrders() {
 
 function FarmerProfile() {
   const api = useApi()
-  const { user, setUser } = useAuth()
-  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '' })
+  const { user, setUser, token } = useAuth()
+  const [form, setForm] = useState({ 
+    name: '', 
+    phoneNumber: '', 
+    farmName: '', 
+    address: '', 
+    place: '', 
+    landmark: '', 
+    pincode: '', 
+    productTypes: [], 
+    yearsOfExperience: 0 
+  })
+  const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+  const [errors, setErrors] = useState({})
 
+  const productTypeOptions = [
+    'Vegetables',
+    'Fruits',
+    'Grains',
+    'Dairy',
+    'Poultry',
+    'Spices',
+    'Herbs',
+    'Organic Seeds',
+    'Honey',
+    'Other'
+  ]
+
+  // Fetch full profile data on mount
   useEffect(() => {
-    if (user) {
-      setForm({ name: user.name || '', email: user.email || '' })
+    const fetchProfile = async () => {
+      if (!token) {
+        setFetching(false)
+        return
+      }
+      try {
+        const data = await api.get('/api/auth/profile')
+        setEmail(data.email || '')
+        setForm({
+          name: data.name || '',
+          phoneNumber: data.phoneNumber || '',
+          farmName: data.farmName || '',
+          address: data.address || '',
+          place: data.place || '',
+          landmark: data.landmark || '',
+          pincode: data.pincode || '',
+          productTypes: data.productTypes || [],
+          yearsOfExperience: data.yearsOfExperience || 0
+        })
+      } catch (err) {
+        console.error('Failed to fetch profile:', err)
+        setMessage('Failed to load profile data')
+      } finally {
+        setFetching(false)
+      }
     }
-  }, [user])
+    fetchProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    // Validate phone number (10 digits)
+    if (form.phoneNumber) {
+      const phoneRegex = /^\d{10}$/
+      if (!phoneRegex.test(form.phoneNumber)) {
+        newErrors.phoneNumber = 'Phone number must be exactly 10 digits'
+      }
+    }
+
+    // Validate pincode (6 digits)
+    if (form.pincode) {
+      const pincodeRegex = /^\d{6}$/
+      if (!pincodeRegex.test(form.pincode)) {
+        newErrors.pincode = 'Pincode must be exactly 6 digits'
+      }
+    }
+
+    // Validate years of experience
+    if (form.yearsOfExperience < 0) {
+      newErrors.yearsOfExperience = 'Years of experience cannot be negative'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleProductTypeChange = (productType) => {
+    setForm(prev => {
+      const currentTypes = prev.productTypes || []
+      if (currentTypes.includes(productType)) {
+        return { ...prev, productTypes: currentTypes.filter(t => t !== productType) }
+      } else {
+        return { ...prev, productTypes: [...currentTypes, productType] }
+      }
+    })
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setMessage('')
+    setErrors({})
+
+    if (!validateForm()) {
+      setMessage('Please fix the validation errors')
+      return
+    }
+
+    setLoading(true)
     try {
       const data = await api.put('/api/auth/profile', form)
       setMessage('Profile updated successfully!')
@@ -636,34 +734,267 @@ function FarmerProfile() {
     }
   }
 
+  if (fetching) {
+    return <div className="loading">Loading profile...</div>
+  }
+
   return (
-    <div>
-      <h3>My Profile</h3>
-      {user?.role === 'farmer' && (
-        <div style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: user?.isApproved ? '#d4edda' : '#fff3cd', border: `1px solid ${user?.isApproved ? '#c3e6cb' : '#ffc107'}` }}>
-          <strong>Account Status:</strong> {user?.isApproved ? '✓ Approved' : '⏳ Pending Approval'}
-          {!user?.isApproved && <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Your account is pending admin approval. You cannot add products until approved.</p>}
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h3 style={{ margin: 0 }}>My Profile</h3>
+        {user?.role === 'farmer' && (
+          <span
+            className="badge"
+            style={{
+              backgroundColor: user?.isApproved ? '#28a745' : '#ffc107',
+              color: user?.isApproved ? 'white' : '#000',
+              padding: '0.5rem 1rem',
+              borderRadius: '4px',
+              fontWeight: 500
+            }}
+          >
+            {user?.isApproved ? '✓ Approved' : '⏳ Pending Approval'}
+          </span>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: 700 }}>
+        {/* Personal Info Section */}
+        <div>
+          <h4 style={{ margin: '0 0 1.5rem 0', color: '#28a745', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #28a745' }}>
+            Personal Info
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Full Name</label>
+              <input
+                type="text"
+                className="input"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+                style={{ width: '100%', padding: '0.75rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Phone Number</label>
+              <input
+                type="text"
+                className="input"
+                value={form.phoneNumber}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '')
+                  setForm({ ...form, phoneNumber: value })
+                  if (errors.phoneNumber) setErrors({ ...errors, phoneNumber: '' })
+                }}
+                placeholder="10 digits"
+                maxLength={10}
+                style={{ width: '100%', padding: '0.75rem' }}
+              />
+              {errors.phoneNumber && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.phoneNumber}</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Farm Info Section */}
+        <div>
+          <h4 style={{ margin: '0 0 1.5rem 0', color: '#28a745', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #28a745' }}>
+            Farm Info
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Farm Name</label>
+              <input
+                type="text"
+                className="input"
+                value={form.farmName}
+                onChange={(e) => setForm({ ...form, farmName: e.target.value })}
+                style={{ width: '100%', padding: '0.75rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Product Types</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #dee2e6' }}>
+                {productTypeOptions.map((type) => (
+                  <label
+                    key={type}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      padding: '0.5rem 1rem',
+                      backgroundColor: form.productTypes.includes(type) ? '#28a745' : 'white',
+                      color: form.productTypes.includes(type) ? 'white' : '#333',
+                      border: `1px solid ${form.productTypes.includes(type) ? '#28a745' : '#dee2e6'}`,
+                      borderRadius: '4px',
+                      fontSize: '0.9rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.productTypes.includes(type)}
+                      onChange={() => handleProductTypeChange(type)}
+                      style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                    />
+                    {type}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Years of Experience</label>
+              <input
+                type="number"
+                className="input"
+                value={form.yearsOfExperience}
+                onChange={(e) => {
+                  const value = Math.max(0, parseInt(e.target.value) || 0)
+                  setForm({ ...form, yearsOfExperience: value })
+                  if (errors.yearsOfExperience) setErrors({ ...errors, yearsOfExperience: '' })
+                }}
+                min="0"
+                style={{ width: '100%', padding: '0.75rem' }}
+              />
+              {errors.yearsOfExperience && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.yearsOfExperience}</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Info Section */}
+        <div>
+          <h4 style={{ margin: '0 0 1.5rem 0', color: '#28a745', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #28a745' }}>
+            Contact Info
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Address</label>
+              <textarea
+                className="input"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                rows={3}
+                style={{ width: '100%', padding: '0.75rem', resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Place</label>
+              <input
+                type="text"
+                className="input"
+                value={form.place}
+                onChange={(e) => setForm({ ...form, place: e.target.value })}
+                style={{ width: '100%', padding: '0.75rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Landmark</label>
+              <input
+                type="text"
+                className="input"
+                value={form.landmark}
+                onChange={(e) => setForm({ ...form, landmark: e.target.value })}
+                style={{ width: '100%', padding: '0.75rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Pincode</label>
+              <input
+                type="text"
+                className="input"
+                value={form.pincode}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '')
+                  setForm({ ...form, pincode: value })
+                  if (errors.pincode) setErrors({ ...errors, pincode: '' })
+                }}
+                placeholder="6 digits"
+                maxLength={6}
+                style={{ width: '100%', padding: '0.75rem' }}
+              />
+              {errors.pincode && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.pincode}</span>}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Email</label>
+              <input
+                type="email"
+                className="input"
+                value={email || user?.email || ''}
+                readOnly
+                onFocus={(e) => e.target.select()}
+                style={{ 
+                  width: '100%', 
+                  padding: '0.75rem',
+                  backgroundColor: '#e9ecef',
+                  cursor: 'text'
+                }}
+              />
+              <span style={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '-0.25rem' }}>Email cannot be changed</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Account Status</label>
+              <div style={{ padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #dee2e6' }}>
+                <span
+                  className="badge"
+                  style={{
+                    backgroundColor: user?.isApproved ? '#28a745' : '#ffc107',
+                    color: user?.isApproved ? 'white' : '#000',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    fontWeight: 500,
+                    display: 'inline-block'
+                  }}
+                >
+                  {user?.isApproved ? '✓ Approved' : '⏳ Pending Approval'}
+                </span>
+                {!user?.isApproved && (
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: '#6c757d' }}>
+                    Your account is pending admin approval. You cannot add products until approved.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Update Profile Button */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+          <button 
+            type="submit" 
+            className="btn btn-primary" 
+            disabled={loading}
+            style={{ 
+              padding: '0.75rem 3rem',
+              fontSize: '1rem',
+              minWidth: 200
+            }}
+          >
+            {loading ? 'Updating...' : 'Update Profile'}
+          </button>
+        </div>
+      </form>
+
+      {message && (
+        <div style={{ 
+          marginTop: '1.5rem', 
+          padding: '0.75rem 1rem',
+          backgroundColor: message.includes('success') ? '#d4edda' : '#f8d7da',
+          border: `1px solid ${message.includes('success') ? '#c3e6cb' : '#f5c6cb'}`,
+          borderRadius: '4px',
+          color: message.includes('success') ? '#155724' : '#721c24',
+          textAlign: 'center'
+        }}>
+          {message}
         </div>
       )}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 400 }}>
-        <input
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          required
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Updating...' : 'Update Profile'}
-        </button>
-      </form>
-      {message && <p style={{ color: message.includes('success') ? 'green' : 'red', marginTop: '0.5rem' }}>{message}</p>}
     </div>
   )
 }

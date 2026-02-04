@@ -39,6 +39,19 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    farmName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    productTypes: {
+      type: [String],
+      default: [],
+    },
+    yearsOfExperience: {
+      type: Number,
+      default: 0,
+    },
     password: {
       type: String,
       required: true,

@@ -101,7 +101,7 @@ router.get("/profile", auth, async (req, res) => {
 // Update profile
 router.put("/profile", auth, async (req, res) => {
   try {
-    const { name, email, phoneNumber, address, place, landmark, pincode } = req.body;
+    const { name, email, phoneNumber, address, place, landmark, pincode, farmName, productTypes, yearsOfExperience } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -145,6 +145,14 @@ router.put("/profile", auth, async (req, res) => {
     if (address !== undefined) user.address = address || "";
     if (place !== undefined) user.place = place || "";
     if (landmark !== undefined) user.landmark = landmark || "";
+    if (farmName !== undefined) user.farmName = farmName || "";
+    if (productTypes !== undefined) {
+      user.productTypes = Array.isArray(productTypes) ? productTypes : [];
+    }
+    if (yearsOfExperience !== undefined) {
+      const years = Number(yearsOfExperience);
+      user.yearsOfExperience = isNaN(years) ? 0 : Math.max(0, years);
+    }
 
     await user.save();
 
