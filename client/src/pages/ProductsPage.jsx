@@ -10,12 +10,20 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' })
   const [loadingReviews, setLoadingReviews] = useState(false)
+  const [canReview, setCanReview] = useState(false)
+  const [checkingReview, setCheckingReview] = useState(false)
 
   useEffect(() => {
     if (showReviews) {
       loadReviews()
     }
   }, [showReviews])
+
+  useEffect(() => {
+    if (user?.role === 'customer' && product._id) {
+      checkCanReview()
+    }
+  }, [user, product._id])
 
   const loadReviews = async () => {
     setLoadingReviews(true)
@@ -26,6 +34,27 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
       console.error('Failed to load reviews:', err)
     } finally {
       setLoadingReviews(false)
+    }
+  }
+
+  const checkCanReview = async () => {
+    if (!user || user.role !== 'customer') {
+      setCanReview(false)
+      return
+    }
+    setCheckingReview(true)
+    try {
+      const token = localStorage.getItem('token')
+      const data = await apiRequest(`/api/reviews/can-review/${product._id}`, {
+        method: 'GET',
+        token
+      })
+      setCanReview(data.canReview || false)
+    } catch (err) {
+      console.error('Failed to check review eligibility:', err)
+      setCanReview(false)
+    } finally {
+      setCheckingReview(false)
     }
   }
 
@@ -56,6 +85,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
       setShowReviewForm(false)
       setReviewForm({ rating: 5, comment: '' })
       await loadReviews()
+      await checkCanReview() // Refresh canReview status
       alert('Review submitted!')
     } catch (err) {
       alert(err.message || 'Failed to submit review')
@@ -67,7 +97,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
     : null
 
   return (
-    <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '8px', backgroundColor: '#fff' }}>
+    <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {product.imageUrl && (
         <img
           src={product.imageUrl}
@@ -100,9 +130,10 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
             min={1}
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            style={{ width: 80, padding: '0.25rem' }}
+            className="input"
+            style={{ width: 80 }}
           />
-          <button onClick={handleOrder} style={{ flex: 1, padding: '0.5rem', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          <button onClick={handleOrder} className="btn btn-primary" style={{ flex: 1 }}>
             Order Now
           </button>
         </div>
@@ -115,13 +146,18 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
         >
           {showReviews ? 'Hide Reviews' : `View Reviews (${reviews.length})`}
         </button>
-        {user?.role === 'customer' && (
+        {user?.role === 'customer' && canReview && (
           <button
             onClick={() => setShowReviewForm(!showReviewForm)}
             style={{ marginLeft: '1rem', background: 'none', border: 'none', color: '#28a745', cursor: 'pointer', textDecoration: 'underline' }}
           >
             {showReviewForm ? 'Cancel Review' : 'Write Review'}
           </button>
+        )}
+        {user?.role === 'customer' && !canReview && !checkingReview && (
+          <span style={{ marginLeft: '1rem', color: '#6c757d', fontSize: '0.9rem' }}>
+            (Review after delivery)
+          </span>
         )}
       </div>
       {showReviewForm && user?.role === 'customer' && (
@@ -230,44 +266,51 @@ function ProductsPage() {
   if (error) return <p style={{ color: 'red' }}>{error}</p>
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <h2>Organic Products</h2>
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="Search products..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-        />
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          style={{ padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-        {(searchTerm || categoryFilter) && (
-          <button
-            onClick={() => {
-              setSearchTerm('')
-              setCategoryFilter('')
-            }}
-            style={{ padding: '0.5rem 1rem', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+    <div>
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#28a745' }}>🌱 Organic Products</h2>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="🔍 Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input"
+            style={{ flex: 1, minWidth: 200 }}
+          />
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="select"
           >
-            Clear Filters
-          </button>
-        )}
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+          {(searchTerm || categoryFilter) && (
+            <button
+              onClick={() => {
+                setSearchTerm('')
+                setCategoryFilter('')
+              }}
+              className="btn btn-secondary"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
       </div>
       {filteredProducts.length === 0 ? (
-        <p>No products found. {products.length === 0 ? 'Check back later!' : 'Try adjusting your filters.'}</p>
+        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#6c757d' }}>
+          <p style={{ fontSize: '1.1rem' }}>
+            {products.length === 0 ? 'No products available. Check back later!' : 'No products match your filters. Try adjusting your search.'}
+          </p>
+        </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {filteredProducts.map((p) => (
             <ProductCard key={p._id} product={p} user={user} api={api} />
           ))}

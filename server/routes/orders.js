@@ -46,10 +46,16 @@ router.post("/", auth, allowRoles("customer"), async (req, res) => {
 // Get customer orders
 router.get("/user", auth, allowRoles("customer"), async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user.id })
+    const query = { user: req.user.id };
+    // Optional status filter from query parameter
+    if (req.query.status && req.query.status.trim()) {
+      query.status = req.query.status.trim();
+    }
+    const orders = await Order.find(query)
       .populate("items.product")
-      .sort({ createdAt: -1 });
-    return res.json(orders);
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.json(orders || []);
   } catch (err) {
     return res.status(500).json({ message: "Failed to fetch orders", error: err.message });
   }
@@ -58,17 +64,24 @@ router.get("/user", auth, allowRoles("customer"), async (req, res) => {
 // Get farmer orders
 router.get("/farmer", auth, allowRoles("farmer", "admin"), async (req, res) => {
   try {
-    const orders = await Order.find()
+    const query = {};
+    // Optional status filter from query parameter
+    if (req.query.status && req.query.status.trim()) {
+      query.status = req.query.status.trim();
+    }
+    
+    const orders = await Order.find(query)
       .populate({
         path: "items.product",
         populate: { path: "farmer", select: "name email role" },
       })
+      .populate("user", "name email")
       .sort({ createdAt: -1 });
 
     const filtered = req.user.role === "admin"
       ? orders
       : orders.filter((order) =>
-          order.items.every((i) => i.product && i.product.farmer?.toString() === req.user.id)
+          order.items.some((i) => i.product && i.product.farmer?.toString() === req.user.id)
         );
 
     return res.json(filtered);

@@ -32,7 +32,14 @@ router.post("/register", async (req, res) => {
     const token = signToken(user);
     return res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isApproved: user.isApproved,
+        isBlocked: user.isBlocked,
+      },
     });
   } catch (err) {
     return res.status(500).json({ message: "Registration failed", error: err.message });
@@ -64,7 +71,14 @@ router.post("/login", async (req, res) => {
     const token = signToken(user);
     return res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isApproved: user.isApproved,
+        isBlocked: user.isBlocked,
+      },
     });
   } catch (err) {
     return res.status(500).json({ message: "Login failed", error: err.message });

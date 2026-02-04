@@ -120,22 +120,70 @@ function CustomerStats() {
 
 function CustomerOrders() {
   const api = useApi()
+  const { token } = useAuth()
   const [orders, setOrders] = useState([])
   const [filter, setFilter] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [expandedOrder, setExpandedOrder] = useState(null)
+  const [reviewingProduct, setReviewingProduct] = useState(null)
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' })
+  const [productReviews, setProductReviews] = useState({}) // { productId: { canReview: bool, hasReviewed: bool } }
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      // Send status filter to backend if selected
+      const url = filter 
+        ? `/api/orders/user?status=${encodeURIComponent(filter.trim())}`
+        : '/api/orders/user'
+      const data = await api.get(url)
+      setOrders(data || [])
+    } catch (err) {
+      setError(err.message || 'Failed to load orders')
+      console.error('Error loading orders:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await api.get('/api/orders/user')
-        setOrders(data)
-      } catch (err) {
-        setError(err.message)
-      }
+    if (token) {
+      load()
     }
-    load()
-  }, [])
+  }, [token, filter])
+
+  // Check review eligibility for products in delivered orders
+  useEffect(() => {
+    const checkReviews = async () => {
+      const deliveredOrders = orders.filter(o => o.status === 'Delivered')
+      const productIds = new Set()
+      deliveredOrders.forEach(order => {
+        order.items.forEach(item => {
+          if (item.product?._id) {
+            productIds.add(item.product._id)
+          }
+        })
+      })
+
+      const reviewStatus = {}
+      for (const productId of productIds) {
+        try {
+          const data = await api.get(`/api/reviews/can-review/${productId}`)
+          reviewStatus[productId] = data
+        } catch (err) {
+          console.error(`Failed to check review for product ${productId}:`, err)
+          reviewStatus[productId] = { canReview: false, hasReviewed: false }
+        }
+      }
+      setProductReviews(reviewStatus)
+    }
+
+    if (token && orders.length > 0) {
+      checkReviews()
+    }
+  }, [orders, token, api])
 
   const getStatusColor = (status) => {
     const colors = {
@@ -147,69 +195,188 @@ function CustomerOrders() {
     return colors[status] || '#6c757d'
   }
 
-  const filteredOrders = filter ? orders.filter((o) => o.status === filter) : orders
+  // Fix filter: ensure exact status match (case-sensitive, trimmed)
+  const filteredOrders = filter 
+    ? orders.filter((o) => {
+        const orderStatus = String(o.status || '').trim();
+        const filterStatus = String(filter).trim();
+        return orderStatus === filterStatus;
+      })
+    : orders
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>
+  if (loading) return <div className="loading">Loading orders...</div>
+  if (error) return <div className="error">Error: {error}</div>
 
   return (
     <div>
-      <h3>My Orders</h3>
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <label>Filter by status:</label>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">All Orders</option>
-          <option value="Pending">Pending</option>
-          <option value="Accepted">Accepted</option>
-          <option value="Packed">Packed</option>
-          <option value="Delivered">Delivered</option>
-        </select>
-        <span style={{ marginLeft: '1rem' }}>Total: {filteredOrders.length}</span>
-      </div>
-      {filteredOrders.length === 0 && <p>No orders found.</p>}
-      {filteredOrders.map((o) => (
-        <div key={o._id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-            <div>
-              <p style={{ margin: '0.25rem 0' }}>
-                <strong>Order ID:</strong> {o._id.slice(-8)} | <strong>Date:</strong> {new Date(o.createdAt).toLocaleString()}
-              </p>
-              <p style={{ margin: '0.25rem 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                Total: ₹{o.totalAmount}
-              </p>
-            </div>
-            <span
-              style={{
-                padding: '0.25rem 0.75rem',
-                borderRadius: '4px',
-                backgroundColor: getStatusColor(o.status),
-                color: 'white',
-                fontWeight: 'bold',
-              }}
-            >
-              {o.status}
-            </span>
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ margin: 0 }}>My Orders</h3>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <label style={{ fontWeight: 500 }}>Filter:</label>
+            <select value={filter} onChange={(e) => setFilter(e.target.value)} className="select" style={{ minWidth: 150 }}>
+              <option value="">All Orders</option>
+              <option value="Pending">Pending</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Packed">Packed</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+            <span style={{ color: '#6c757d', fontWeight: 500 }}>Total: {filteredOrders.length}</span>
           </div>
-          <button
-            onClick={() => setExpandedOrder(expandedOrder === o._id ? null : o._id)}
-            style={{ marginBottom: '0.5rem', background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            {expandedOrder === o._id ? 'Hide Details' : 'Show Details'}
-          </button>
-          {expandedOrder === o._id && (
-            <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-              <strong>Items:</strong>
-              <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
-                {o.items.map((item, idx) => (
-                  <li key={idx} style={{ marginBottom: '0.25rem' }}>
-                    {item.product?.title || 'Product removed'} - Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹
-                    {(item.quantity * (item.product?.price || 0)).toFixed(2)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
-      ))}
+        {filteredOrders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#6c757d' }}>
+            {filter ? `No ${filter} orders found.` : 'No orders found.'}
+          </div>
+        ) : (
+          filteredOrders.map((o) => (
+            <div key={o._id} className="card" style={{ marginTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.9rem' }}>
+                    Order #{o._id.slice(-8)} • {new Date(o.createdAt).toLocaleDateString()}
+                  </p>
+                  <p style={{ margin: '0.5rem 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>
+                    ₹{o.totalAmount}
+                  </p>
+                </div>
+                <span 
+                  className="badge"
+                  style={{
+                    backgroundColor: getStatusColor(o.status),
+                    color: o.status === 'Pending' ? '#000' : 'white'
+                  }}
+                >
+                  {o.status}
+                </span>
+              </div>
+              <button
+                onClick={() => setExpandedOrder(expandedOrder === o._id ? null : o._id)}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+              >
+                {expandedOrder === o._id ? '▼ Hide Details' : '▶ Show Details'}
+              </button>
+              {expandedOrder === o._id && (
+                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <strong style={{ display: 'block', marginBottom: '0.75rem' }}>Order Items:</strong>
+                  <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'none' }}>
+                    {o.items.map((item, idx) => {
+                      const productId = item.product?._id
+                      const reviewInfo = productId ? productReviews[productId] : null
+                      const canReview = reviewInfo?.canReview || false
+                      const hasReviewed = reviewInfo?.hasReviewed || false
+                      const isDelivered = o.status === 'Delivered'
+                      
+                      return (
+                        <li key={idx} style={{ marginBottom: '0.75rem', padding: '0.75rem', background: 'white', borderRadius: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                            <div style={{ flex: 1 }}>
+                              <strong>{item.product?.title || 'Product removed'}</strong>
+                              <span style={{ color: '#6c757d', marginLeft: '0.5rem' }}>
+                                • Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹{(item.quantity * (item.product?.price || 0)).toFixed(2)}
+                              </span>
+                            </div>
+                            {isDelivered && productId && (
+                              <div style={{ marginLeft: '1rem' }}>
+                                {hasReviewed ? (
+                                  <span style={{ color: '#28a745', fontSize: '0.9rem' }}>✓ Reviewed</span>
+                                ) : canReview ? (
+                                  <button
+                                    onClick={() => setReviewingProduct(reviewingProduct === productId ? null : productId)}
+                                    className="btn"
+                                    style={{ 
+                                      backgroundColor: '#28a745', 
+                                      color: 'white', 
+                                      fontSize: '0.85rem', 
+                                      padding: '0.4rem 0.8rem' 
+                                    }}
+                                  >
+                                    {reviewingProduct === productId ? 'Cancel' : 'Review'}
+                                  </button>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+                          {reviewingProduct === productId && canReview && !hasReviewed && (
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault()
+                                try {
+                                  await api.post('/api/reviews', {
+                                    productId: productId,
+                                    rating: reviewForm.rating,
+                                    comment: reviewForm.comment,
+                                  })
+                                  alert('Review submitted successfully!')
+                                  setReviewingProduct(null)
+                                  setReviewForm({ rating: 5, comment: '' })
+                                  // Refresh review status
+                                  const data = await api.get(`/api/reviews/can-review/${productId}`)
+                                  setProductReviews(prev => ({ ...prev, [productId]: data }))
+                                } catch (err) {
+                                  alert(err.message || 'Failed to submit review')
+                                }
+                              }}
+                              style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}
+                            >
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Rating: </label>
+                                <select
+                                  value={reviewForm.rating}
+                                  onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}
+                                  className="select"
+                                  required
+                                  style={{ width: '100%', maxWidth: 300 }}
+                                >
+                                  <option value={5}>5 - Excellent</option>
+                                  <option value={4}>4 - Very Good</option>
+                                  <option value={3}>3 - Good</option>
+                                  <option value={2}>2 - Fair</option>
+                                  <option value={1}>1 - Poor</option>
+                                </select>
+                              </div>
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Comment: </label>
+                                <textarea
+                                  placeholder="Write your review..."
+                                  value={reviewForm.comment}
+                                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                                  className="input"
+                                  style={{ width: '100%', minHeight: 80, padding: '0.5rem' }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                  type="submit"
+                                  className="btn"
+                                  style={{ backgroundColor: '#28a745', color: 'white' }}
+                                >
+                                  Submit Review
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReviewingProduct(null)
+                                    setReviewForm({ rating: 5, comment: '' })
+                                  }}
+                                  className="btn btn-secondary"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }
@@ -276,11 +443,18 @@ function FarmerProfile() {
 
 function FarmerProducts() {
   const api = useApi()
-  const { user } = useAuth()
+  const { user, token, refreshUser } = useAuth()
   const [products, setProducts] = useState([])
   const [form, setForm] = useState({ title: '', price: '', description: '', category: '', imageUrl: '', isAvailable: true })
   const [editing, setEditing] = useState(null)
   const [error, setError] = useState('')
+
+  // Refresh user data when component mounts to get latest approval status
+  useEffect(() => {
+    if (token && user?.role === 'farmer' && refreshUser) {
+      refreshUser(token)
+    }
+  }, [token, user?.role, refreshUser])
 
   const load = async () => {
     try {
@@ -292,8 +466,10 @@ function FarmerProducts() {
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    if (token) {
+      load()
+    }
+  }, [token])
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -504,22 +680,29 @@ function FarmerStats() {
 
 function FarmerOrders() {
   const api = useApi()
+  const { token } = useAuth()
   const [orders, setOrders] = useState([])
   const [filter, setFilter] = useState('')
   const [error, setError] = useState('')
 
   const load = async () => {
     try {
-      const data = await api.get('/api/orders/farmer')
-      setOrders(data)
+      // Send status filter to backend if selected
+      const url = filter 
+        ? `/api/orders/farmer?status=${encodeURIComponent(filter.trim())}`
+        : '/api/orders/farmer'
+      const data = await api.get(url)
+      setOrders(data || [])
     } catch (err) {
       setError(err.message)
     }
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    if (token) {
+      load()
+    }
+  }, [token, filter])
 
   const updateStatus = async (id, status) => {
     try {
@@ -530,7 +713,14 @@ function FarmerOrders() {
     }
   }
 
-  const filteredOrders = filter ? orders.filter((o) => o.status === filter) : orders
+  // Fix filter: ensure exact status match (case-sensitive, trimmed)
+  const filteredOrders = filter 
+    ? orders.filter((o) => {
+        const orderStatus = String(o.status || '').trim();
+        const filterStatus = String(filter).trim();
+        return orderStatus === filterStatus;
+      })
+    : orders
 
   const getStatusColor = (status) => {
     const colors = {
@@ -542,76 +732,85 @@ function FarmerOrders() {
     return colors[status] || '#6c757d'
   }
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>
+  if (error) return <div className="error">{error}</div>
 
   return (
     <div>
-      <h3>My Orders</h3>
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <label>Filter by status:</label>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">All Orders</option>
-          <option value="Pending">Pending</option>
-          <option value="Accepted">Accepted</option>
-          <option value="Packed">Packed</option>
-          <option value="Delivered">Delivered</option>
-        </select>
-        <span style={{ marginLeft: '1rem' }}>Total: {filteredOrders.length}</span>
-      </div>
-      {filteredOrders.length === 0 && <p>No orders found.</p>}
-      {filteredOrders.map((o) => (
-        <div key={o._id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-            <div>
-              <p style={{ margin: '0.25rem 0' }}>
-                <strong>Order ID:</strong> {o._id.slice(-8)} | <strong>Customer:</strong> {o.user?.name || 'Unknown'}
-              </p>
-              <p style={{ margin: '0.25rem 0' }}>
-                <strong>Total Amount:</strong> ₹{o.totalAmount} | <strong>Date:</strong> {new Date(o.createdAt).toLocaleString()}
-              </p>
-            </div>
-            <span
-              style={{
-                padding: '0.25rem 0.75rem',
-                borderRadius: '4px',
-                backgroundColor: getStatusColor(o.status),
-                color: 'white',
-                fontWeight: 'bold',
-              }}
-            >
-              {o.status}
-            </span>
-          </div>
-          <div style={{ marginTop: '0.5rem' }}>
-            <strong>Items:</strong>
-            <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
-              {o.items.map((item, idx) => (
-                <li key={idx}>
-                  {item.product?.title || 'Product removed'} - Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹
-                  {(item.quantity * (item.product?.price || 0)).toFixed(2)}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {o.status === 'Pending' && (
-              <button onClick={() => updateStatus(o._id, 'Accepted')} style={{ backgroundColor: '#17a2b8', color: 'white' }}>
-                Accept Order
-              </button>
-            )}
-            {(o.status === 'Pending' || o.status === 'Accepted') && (
-              <button onClick={() => updateStatus(o._id, 'Packed')} style={{ backgroundColor: '#007bff', color: 'white' }}>
-                Mark as Packed
-              </button>
-            )}
-            {(o.status === 'Packed' || o.status === 'Accepted') && (
-              <button onClick={() => updateStatus(o._id, 'Delivered')} style={{ backgroundColor: '#28a745', color: 'white' }}>
-                Mark as Delivered
-              </button>
-            )}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ margin: 0 }}>My Orders</h3>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <label style={{ fontWeight: 500 }}>Filter:</label>
+            <select value={filter} onChange={(e) => setFilter(e.target.value)} className="select" style={{ minWidth: 150 }}>
+              <option value="">All Orders</option>
+              <option value="Pending">Pending</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Packed">Packed</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+            <span style={{ color: '#6c757d', fontWeight: 500 }}>Total: {filteredOrders.length}</span>
           </div>
         </div>
-      ))}
+        {filteredOrders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#6c757d' }}>
+            {filter ? `No ${filter} orders found.` : 'No orders found.'}
+          </div>
+        ) : (
+          filteredOrders.map((o) => (
+            <div key={o._id} className="card" style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.9rem' }}>
+                  Order #{o._id.slice(-8)} • Customer: {o.user?.name || 'Unknown'} • {new Date(o.createdAt).toLocaleDateString()}
+                </p>
+                <p style={{ margin: '0.5rem 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>
+                  ₹{o.totalAmount}
+                </p>
+              </div>
+              <span 
+                className="badge"
+                style={{
+                  backgroundColor: getStatusColor(o.status),
+                  color: o.status === 'Pending' ? '#000' : 'white'
+                }}
+              >
+                {o.status}
+              </span>
+            </div>
+            <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
+              <strong style={{ display: 'block', marginBottom: '0.5rem' }}>Items:</strong>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'none' }}>
+                {o.items.map((item, idx) => (
+                  <li key={idx} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: 'white', borderRadius: '4px' }}>
+                    <strong>{item.product?.title || 'Product removed'}</strong>
+                    <span style={{ color: '#6c757d', marginLeft: '0.5rem' }}>
+                      • Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹{(item.quantity * (item.product?.price || 0)).toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {o.status === 'Pending' && (
+                <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn" style={{ backgroundColor: '#17a2b8', color: 'white' }}>
+                  Accept Order
+                </button>
+              )}
+              {(o.status === 'Pending' || o.status === 'Accepted') && (
+                <button onClick={() => updateStatus(o._id, 'Packed')} className="btn" style={{ backgroundColor: '#007bff', color: 'white' }}>
+                  Mark as Packed
+                </button>
+              )}
+              {(o.status === 'Packed' || o.status === 'Accepted') && (
+                <button onClick={() => updateStatus(o._id, 'Delivered')} className="btn btn-primary">
+                  Mark as Delivered
+                </button>
+              )}
+            </div>
+          </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }
@@ -672,26 +871,37 @@ function AdminStats() {
 
 function AdminUsers() {
   const api = useApi()
+  const { token } = useAuth()
   const [users, setUsers] = useState([])
   const [filter, setFilter] = useState({ role: '', isApproved: '', isBlocked: '' })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   const load = async () => {
+    setLoading(true)
+    setError('')
     try {
       const params = new URLSearchParams()
       if (filter.role) params.append('role', filter.role)
       if (filter.isApproved) params.append('isApproved', filter.isApproved)
       if (filter.isBlocked) params.append('isBlocked', filter.isBlocked)
-      const data = await api.get(`/api/admin/users?${params}`)
-      setUsers(data)
+      const queryString = params.toString()
+      const url = `/api/admin/users${queryString ? `?${queryString}` : ''}`
+      const data = await api.get(url)
+      setUsers(data || [])
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to load users')
+      console.error('Error loading users:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    load()
-  }, [filter])
+    if (token) {
+      load()
+    }
+  }, [filter, token])
 
   const handleApprove = async (id, isApproved) => {
     try {
@@ -721,11 +931,13 @@ function AdminUsers() {
     }
   }
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>
+  if (loading) return <p>Loading users...</p>
+  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
 
   return (
     <div>
       <h3>User Management</h3>
+      {users.length === 0 && !loading && <p>No users found.</p>}
       <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <select value={filter.role} onChange={(e) => setFilter({ ...filter, role: e.target.value })}>
           <option value="">All Roles</option>
@@ -804,21 +1016,30 @@ function AdminUsers() {
 
 function AdminProducts() {
   const api = useApi()
+  const { token } = useAuth()
   const [products, setProducts] = useState([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   const load = async () => {
+    setLoading(true)
+    setError('')
     try {
       const data = await api.get('/api/admin/products')
-      setProducts(data)
+      setProducts(data || [])
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to load products')
+      console.error('Error loading products:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    if (token) {
+      load()
+    }
+  }, [token])
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this product?')) return
@@ -830,13 +1051,14 @@ function AdminProducts() {
     }
   }
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>
+  if (loading) return <p>Loading products...</p>
+  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
 
   return (
     <div>
       <h3>All Products Management</h3>
       <div style={{ marginTop: '1rem' }}>
-        {products.length === 0 && <p>No products found.</p>}
+        {products.length === 0 && !loading && <p>No products found.</p>}
         {products.map((p) => (
           <div key={p._id} style={{ border: '1px solid #ccc', padding: '0.5rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -859,21 +1081,30 @@ function AdminProducts() {
 
 function AdminOrders() {
   const api = useApi()
+  const { token } = useAuth()
   const [orders, setOrders] = useState([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   const load = async () => {
+    setLoading(true)
+    setError('')
     try {
       const data = await api.get('/api/admin/orders')
-      setOrders(data)
+      setOrders(data || [])
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to load orders')
+      console.error('Error loading orders:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    if (token) {
+      load()
+    }
+  }, [token])
 
   const updateStatus = async (id, status) => {
     try {
@@ -884,13 +1115,14 @@ function AdminOrders() {
     }
   }
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>
+  if (loading) return <p>Loading orders...</p>
+  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
 
   return (
     <div>
       <h3>All Orders Monitoring</h3>
       <div style={{ marginTop: '1rem' }}>
-        {orders.length === 0 && <p>No orders found.</p>}
+        {orders.length === 0 && !loading && <p>No orders found.</p>}
         {orders.map((o) => (
           <div key={o._id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
             <p>
@@ -934,25 +1166,25 @@ function DashboardPage() {
         <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           {user?.role === 'customer' && (
             <>
-              <Link to="customer/stats">Dashboard</Link>
-              <Link to="customer/profile">Profile</Link>
-              <Link to="customer/orders">My Orders</Link>
+              <Link to="/dashboard/customer/stats">Dashboard</Link>
+              <Link to="/dashboard/customer/profile">Profile</Link>
+              <Link to="/dashboard/customer/orders">My Orders</Link>
             </>
           )}
           {user?.role === 'farmer' && (
             <>
-              <Link to="farmer/stats">Dashboard</Link>
-              <Link to="farmer/profile">Profile</Link>
-              <Link to="farmer/products">My Products</Link>
-              <Link to="farmer/orders">Orders</Link>
+              <Link to="/dashboard/farmer/stats">Dashboard</Link>
+              <Link to="/dashboard/farmer/profile">Profile</Link>
+              <Link to="/dashboard/farmer/products">My Products</Link>
+              <Link to="/dashboard/farmer/orders">Orders</Link>
             </>
           )}
           {user?.role === 'admin' && (
             <>
-              <Link to="admin/stats">Statistics</Link>
-              <Link to="admin/users">Users</Link>
-              <Link to="admin/products">Products</Link>
-              <Link to="admin/orders">Orders</Link>
+              <Link to="/dashboard/admin/stats">Statistics</Link>
+              <Link to="/dashboard/admin/users">Users</Link>
+              <Link to="/dashboard/admin/products">Products</Link>
+              <Link to="/dashboard/admin/orders">Orders</Link>
             </>
           )}
         </div>
@@ -963,11 +1195,11 @@ function DashboardPage() {
               index
               element={
                 user?.role === 'farmer' ? (
-                  <Navigate to="farmer/stats" replace />
+                  <Navigate to="/dashboard/farmer/stats" replace />
                 ) : user?.role === 'admin' ? (
-                  <Navigate to="admin/stats" replace />
+                  <Navigate to="/dashboard/admin/stats" replace />
                 ) : (
-                  <Navigate to="customer/stats" replace />
+                  <Navigate to="/dashboard/customer/stats" replace />
                 )
               }
             />

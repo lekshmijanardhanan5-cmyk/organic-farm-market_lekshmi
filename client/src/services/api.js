@@ -8,27 +8,49 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
     headers.Authorization = `Bearer ${token}`
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const options = {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const message = data?.message || 'Request failed'
-    throw new Error(message)
   }
-  return data
+
+  if (body && (method === 'POST' || method === 'PUT')) {
+    options.body = JSON.stringify(body)
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}${path}`, options)
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+      const message = data?.message || `Request failed with status ${res.status}`
+      throw new Error(message)
+    }
+    return data
+  } catch (err) {
+    // Network error or other fetch error
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      throw new Error('Cannot connect to server. Make sure the backend is running on port 5000.')
+    }
+    throw err
+  }
 }
 
 // Small hook for components to use with auth context
 export function useApi() {
   const { token } = useAuth()
+  
+  const makeRequest = async (method, path, body) => {
+    if (!token) {
+      throw new Error('Not authenticated. Please log in again.')
+    }
+    return apiRequest(path, { method, body, token })
+  }
+  
   return {
-    get: (path) => apiRequest(path, { token }),
-    post: (path, body) => apiRequest(path, { method: 'POST', body, token }),
-    put: (path, body) => apiRequest(path, { method: 'PUT', body, token }),
+    get: (path) => makeRequest('GET', path),
+    post: (path, body) => makeRequest('POST', path, body),
+    put: (path, body) => makeRequest('PUT', path, body),
+    delete: (path) => makeRequest('DELETE', path),
   }
 }
 

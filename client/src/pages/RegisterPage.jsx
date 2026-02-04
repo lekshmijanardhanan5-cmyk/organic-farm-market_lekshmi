@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiRequest } from '../services/api'
 
@@ -32,40 +32,48 @@ function RegisterPage() {
   }
 
   return (
-    <div>
-      <h2>Register</h2>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 320 }}>
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="customer">Customer</option>
-          <option value="farmer">Farmer</option>
-          <option value="admin">Admin (for demo)</option>
-        </select>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Registering...' : 'Register'}
-        </button>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-      </form>
+    <div style={{ maxWidth: 450, margin: '2rem auto' }}>
+      <div className="card">
+        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', textAlign: 'center', color: '#28a745' }}>Register</h2>
+        {error && <div className="error">{error}</div>}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="input"
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="input"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="input"
+          />
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="select">
+            <option value="customer">Customer</option>
+            <option value="farmer">Farmer</option>
+            <option value="admin">Admin (for demo)</option>
+          </select>
+          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
+            {loading ? 'Registering...' : 'Register'}
+          </button>
+        </form>
+        <p style={{ marginTop: '1.5rem', textAlign: 'center', color: '#6c757d' }}>
+          Already have an account? <Link to="/login" style={{ color: '#28a745', fontWeight: 500 }}>Login here</Link>
+        </p>
+      </div>
     </div>
   )
 }

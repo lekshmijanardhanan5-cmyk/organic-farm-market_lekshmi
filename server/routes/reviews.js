@@ -37,9 +37,10 @@ router.post("/", auth, allowRoles("customer"), async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Check if user has ordered this product
-    const hasOrdered = await Order.findOne({
+    // Check if user has ordered this product AND the order is delivered
+    const hasDeliveredOrder = await Order.findOne({
       user: req.user.id,
+      status: "Delivered",
       items: {
         $elemMatch: {
           product: productId,
@@ -47,8 +48,8 @@ router.post("/", auth, allowRoles("customer"), async (req, res) => {
       },
     });
 
-    if (!hasOrdered) {
-      return res.status(403).json({ message: "You must order this product before reviewing" });
+    if (!hasDeliveredOrder) {
+      return res.status(403).json({ message: "You can only review products from orders that have been delivered" });
     }
 
     // Check if review already exists
@@ -83,6 +84,34 @@ router.get("/my-reviews", auth, allowRoles("customer"), async (req, res) => {
     return res.json(reviews);
   } catch (err) {
     return res.status(500).json({ message: "Failed to fetch reviews", error: err.message });
+  }
+});
+
+// Check if user can review a product (has delivered order)
+router.get("/can-review/:productId", auth, allowRoles("customer"), async (req, res) => {
+  try {
+    const hasDeliveredOrder = await Order.findOne({
+      user: req.user.id,
+      status: "Delivered",
+      items: {
+        $elemMatch: {
+          product: req.params.productId,
+        },
+      },
+    });
+
+    const hasReviewed = await Review.findOne({
+      user: req.user.id,
+      product: req.params.productId,
+    });
+
+    return res.json({
+      canReview: !!hasDeliveredOrder && !hasReviewed,
+      hasDeliveredOrder: !!hasDeliveredOrder,
+      hasReviewed: !!hasReviewed,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to check review eligibility", error: err.message });
   }
 });
 
