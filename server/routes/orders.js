@@ -53,6 +53,7 @@ router.get("/user", auth, allowRoles("customer"), async (req, res) => {
     }
     const orders = await Order.find(query)
       .populate("items.product")
+      .populate("deliveryAgent", "name email phoneNumber")
       .sort({ createdAt: -1 })
       .lean();
     return res.json(orders || []);
@@ -76,6 +77,7 @@ router.get("/farmer", auth, allowRoles("farmer", "admin"), async (req, res) => {
         populate: { path: "farmer", select: "name email role" },
       })
       .populate("user", "name email")
+      .populate("deliveryAgent", "name email phoneNumber")
       .sort({ createdAt: -1 });
 
     const filtered = req.user.role === "admin"

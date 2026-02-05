@@ -32,46 +32,55 @@ function RegisterPage() {
   }
 
   return (
-    <div style={{ maxWidth: 450, margin: '2rem auto' }}>
+    <div style={{ maxWidth: 450, margin: '3rem auto' }}>
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', textAlign: 'center', color: '#28a745' }}>Register</h2>
+        <h2 style={{ marginTop: 0, marginBottom: '2rem', textAlign: 'center', color: '#28a745' }}>Register</h2>
         {error && <div className="error">{error}</div>}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="input"
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="input"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="input"
-          />
-          <select value={role} onChange={(e) => setRole(e.target.value)} className="select">
-            <option value="customer">Customer</option>
-            <option value="farmer">Farmer</option>
-            <option value="admin">Admin (for demo)</option>
-          </select>
-          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <input
+              type="text"
+              placeholder="Full Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="input"
+            />
+          </div>
+          <div>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="input"
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="input"
+            />
+          </div>
+          <div>
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="select" style={{ width: '100%' }}>
+              <option value="customer">Customer</option>
+              <option value="farmer">Farmer</option>
+              <option value="delivery">Delivery Agent</option>
+              <option value="admin">Admin (for demo)</option>
+            </select>
+          </div>
+          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
             {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
-        <p style={{ marginTop: '1.5rem', textAlign: 'center', color: '#6c757d' }}>
-          Already have an account? <Link to="/login" style={{ color: '#28a745', fontWeight: 500 }}>Login here</Link>
+        <p style={{ marginTop: '2rem', textAlign: 'center', color: '#6c757d', fontSize: '0.95rem' }}>
+          Already have an account? <Link to="/login" style={{ color: '#28a745', fontWeight: 500, textDecoration: 'none' }}>Login here</Link>
         </p>
       </div>
     </div>

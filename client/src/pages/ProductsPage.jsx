@@ -267,8 +267,8 @@ function ProductsPage() {
 
   return (
     <div>
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#28a745' }}>🌱 Organic Products</h2>
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#28a745' }}>🌱 Organic Products</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             type="text"
@@ -282,6 +282,7 @@ function ProductsPage() {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="select"
+            style={{ minWidth: 180 }}
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -305,12 +306,12 @@ function ProductsPage() {
       </div>
       {filteredProducts.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#6c757d' }}>
-          <p style={{ fontSize: '1.1rem' }}>
+          <p style={{ fontSize: '1.1rem', margin: 0 }}>
             {products.length === 0 ? 'No products available. Check back later!' : 'No products match your filters. Try adjusting your search.'}
           </p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
           {filteredProducts.map((p) => (
             <ProductCard key={p._id} product={p} user={user} api={api} />
           ))}

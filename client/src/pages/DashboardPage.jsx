@@ -23,7 +23,6 @@ function CustomerProfile() {
     landmark: '', 
     pincode: '' 
   })
-  const [originalName, setOriginalName] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -38,9 +37,9 @@ function CustomerProfile() {
       }
       try {
         const data = await api.get('/api/auth/profile')
-        setOriginalName(data.name || '')
+        // Populate all fields from the logged-in user data
         setForm({
-          name: '', // Name field will show placeholder only
+          name: data.name || '',
           phoneNumber: data.phoneNumber || '',
           address: data.address || '',
           email: data.email || '',
@@ -102,18 +101,10 @@ function CustomerProfile() {
 
     setLoading(true)
     try {
-      // Use original name if name field is empty, otherwise use entered name
-      const submitData = {
-        ...form,
-        name: form.name.trim() || originalName
-      }
-      const data = await api.put('/api/auth/profile', submitData)
+      // Submit all form data including name from user input
+      const data = await api.put('/api/auth/profile', form)
       setMessage('Profile updated successfully!')
       setUser({ ...user, ...data.user })
-      // Update original name if name was changed
-      if (form.name.trim()) {
-        setOriginalName(form.name.trim())
-      }
     } catch (err) {
       setMessage(err.message || 'Failed to update profile')
     } finally {
@@ -138,6 +129,7 @@ function CustomerProfile() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Enter name"
+            required
             style={{ width: '100%', padding: '0.75rem' }}
           />
         </div>
@@ -456,15 +448,34 @@ function CustomerOrders() {
                     ₹{o.totalAmount}
                   </p>
                 </div>
-                <span 
-                  className="badge"
-                  style={{
-                    backgroundColor: getStatusColor(o.status),
-                    color: o.status === 'Pending' ? '#000' : 'white'
-                  }}
-                >
-                  {o.status}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                  <span 
+                    className="badge"
+                    style={{
+                      backgroundColor: getStatusColor(o.status),
+                      color: o.status === 'Pending' ? '#000' : 'white'
+                    }}
+                  >
+                    {o.status}
+                  </span>
+                  {o.deliveryStatus && (
+                    <span 
+                      className="badge"
+                      style={{
+                        backgroundColor: o.deliveryStatus === 'Assigned' ? '#ffc107' : o.deliveryStatus === 'Picked' ? '#17a2b8' : '#28a745',
+                        color: o.deliveryStatus === 'Assigned' ? '#000' : 'white',
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      Delivery: {o.deliveryStatus}
+                    </span>
+                  )}
+                  {o.deliveryAgent && (
+                    <span style={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '0.25rem' }}>
+                      Agent: {o.deliveryAgent.name}
+                    </span>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => setExpandedOrder(expandedOrder === o._id ? null : o._id)}
@@ -1238,12 +1249,15 @@ function FarmerStats() {
 
 function FarmerOrders() {
   const api = useApi()
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [orders, setOrders] = useState([])
   const [filter, setFilter] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   const load = async () => {
+    setLoading(true)
+    setError('')
     try {
       // Send status filter to backend if selected
       const url = filter 
@@ -1252,7 +1266,10 @@ function FarmerOrders() {
       const data = await api.get(url)
       setOrders(data || [])
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to load orders')
+      console.error('Error loading orders:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1267,8 +1284,38 @@ function FarmerOrders() {
       await api.put(`/api/orders/${id}/status`, { status })
       await load()
     } catch (err) {
-      setError(err.message)
+      alert(err.message || 'Failed to update order status')
     }
+  }
+
+  // Filter items in each order to only show products from this farmer
+  const getFarmerItems = (order) => {
+    if (!user?.id) return []
+    const farmerId = String(user.id)
+    return order.items.filter((item) => {
+      const product = item.product
+      if (!product) return false
+      // Check if product has farmer populated or is a reference
+      // Handle different cases: populated object, ObjectId, or string
+      let productFarmerId = null
+      if (product.farmer) {
+        if (typeof product.farmer === 'object') {
+          productFarmerId = product.farmer._id?.toString() || product.farmer.toString()
+        } else {
+          productFarmerId = String(product.farmer)
+        }
+      }
+      return productFarmerId === farmerId
+    })
+  }
+
+  // Calculate subtotal for farmer's products in the order
+  const calculateFarmerSubtotal = (order) => {
+    const farmerItems = getFarmerItems(order)
+    return farmerItems.reduce((sum, item) => {
+      const price = item.product?.price || 0
+      return sum + (item.quantity * price)
+    }, 0)
   }
 
   // Fix filter: ensure exact status match (case-sensitive, trimmed)
@@ -1290,7 +1337,8 @@ function FarmerOrders() {
     return colors[status] || '#6c757d'
   }
 
-  if (error) return <div className="error">{error}</div>
+  if (loading) return <div className="loading">Loading orders...</div>
+  if (error) return <div className="error">Error: {error}</div>
 
   return (
     <div>
@@ -1314,59 +1362,86 @@ function FarmerOrders() {
             {filter ? `No ${filter} orders found.` : 'No orders found.'}
           </div>
         ) : (
-          filteredOrders.map((o) => (
-            <div key={o._id} className="card" style={{ marginTop: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.9rem' }}>
-                  Order #{o._id.slice(-8)} • Customer: {o.user?.name || 'Unknown'} • {new Date(o.createdAt).toLocaleDateString()}
-                </p>
-                <p style={{ margin: '0.5rem 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>
-                  ₹{o.totalAmount}
-                </p>
+          filteredOrders
+            .map((o) => {
+              const farmerItems = getFarmerItems(o)
+              const farmerSubtotal = calculateFarmerSubtotal(o)
+              return { order: o, farmerItems, farmerSubtotal }
+            })
+            .filter(({ farmerItems }) => farmerItems.length > 0)
+            .map(({ order: o, farmerItems, farmerSubtotal }) => (
+              <div key={o._id} className="card" style={{ marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.9rem' }}>
+                      Order #{o._id.slice(-8)} • {new Date(o.createdAt).toLocaleDateString()}
+                    </p>
+                    <p style={{ margin: '0.5rem 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                      Customer: <span style={{ color: '#28a745' }}>{o.user?.name || 'Unknown'}</span>
+                      {o.user?.email && (
+                        <span style={{ color: '#6c757d', fontSize: '0.9rem', marginLeft: '0.5rem' }}>
+                          ({o.user.email})
+                        </span>
+                      )}
+                    </p>
+                    <p style={{ margin: '0.5rem 0', fontSize: '1.25rem', fontWeight: 'bold', color: '#28a745' }}>
+                      My Products Subtotal: ₹{farmerSubtotal.toFixed(2)}
+                    </p>
+                  </div>
+                  <span 
+                    className="badge"
+                    style={{
+                      backgroundColor: getStatusColor(o.status),
+                      color: o.status === 'Pending' ? '#000' : 'white',
+                      fontSize: '1rem',
+                      padding: '0.5rem 1rem'
+                    }}
+                  >
+                    {o.status}
+                  </span>
+                </div>
+                <div style={{ marginTop: '0.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
+                  <strong style={{ display: 'block', marginBottom: '0.75rem', fontSize: '1.1rem' }}>My Products in This Order:</strong>
+                  <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'none' }}>
+                    {farmerItems.map((item, idx) => (
+                      <li key={idx} style={{ marginBottom: '0.75rem', padding: '0.75rem', background: 'white', borderRadius: '4px', border: '1px solid #dee2e6' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                          <div style={{ flex: 1 }}>
+                            <strong style={{ fontSize: '1rem', display: 'block', marginBottom: '0.25rem' }}>
+                              {item.product?.title || 'Product removed'}
+                            </strong>
+                            <div style={{ color: '#6c757d', fontSize: '0.9rem' }}>
+                              <span>Quantity: <strong>{item.quantity}</strong></span>
+                              <span style={{ marginLeft: '1rem' }}>Price: ₹<strong>{item.product?.price || 0}</strong> per unit</span>
+                              <span style={{ marginLeft: '1rem', color: '#28a745', fontWeight: 'bold' }}>
+                                Subtotal: ₹{(item.quantity * (item.product?.price || 0)).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                  {o.status === 'Pending' && (
+                    <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn" style={{ backgroundColor: '#17a2b8', color: 'white' }}>
+                      Accept Order
+                    </button>
+                  )}
+                  {(o.status === 'Pending' || o.status === 'Accepted') && (
+                    <button onClick={() => updateStatus(o._id, 'Packed')} className="btn" style={{ backgroundColor: '#007bff', color: 'white' }}>
+                      Mark as Packed
+                    </button>
+                  )}
+                  {(o.status === 'Packed' || o.status === 'Accepted') && (
+                    <button onClick={() => updateStatus(o._id, 'Delivered')} className="btn btn-primary">
+                      Mark as Delivered
+                    </button>
+                  )}
+                </div>
               </div>
-              <span 
-                className="badge"
-                style={{
-                  backgroundColor: getStatusColor(o.status),
-                  color: o.status === 'Pending' ? '#000' : 'white'
-                }}
-              >
-                {o.status}
-              </span>
-            </div>
-            <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
-              <strong style={{ display: 'block', marginBottom: '0.5rem' }}>Items:</strong>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'none' }}>
-                {o.items.map((item, idx) => (
-                  <li key={idx} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: 'white', borderRadius: '4px' }}>
-                    <strong>{item.product?.title || 'Product removed'}</strong>
-                    <span style={{ color: '#6c757d', marginLeft: '0.5rem' }}>
-                      • Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹{(item.quantity * (item.product?.price || 0)).toFixed(2)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {o.status === 'Pending' && (
-                <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn" style={{ backgroundColor: '#17a2b8', color: 'white' }}>
-                  Accept Order
-                </button>
-              )}
-              {(o.status === 'Pending' || o.status === 'Accepted') && (
-                <button onClick={() => updateStatus(o._id, 'Packed')} className="btn" style={{ backgroundColor: '#007bff', color: 'white' }}>
-                  Mark as Packed
-                </button>
-              )}
-              {(o.status === 'Packed' || o.status === 'Accepted') && (
-                <button onClick={() => updateStatus(o._id, 'Delivered')} className="btn btn-primary">
-                  Mark as Delivered
-                </button>
-              )}
-            </div>
-          </div>
-          ))
+            ))
         )}
       </div>
     </div>
@@ -1431,9 +1506,21 @@ function AdminUsers() {
   const api = useApi()
   const { token } = useAuth()
   const [users, setUsers] = useState([])
+  const [roles, setRoles] = useState([])
   const [filter, setFilter] = useState({ role: '', isApproved: '', isBlocked: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+
+  const loadRoles = async () => {
+    try {
+      const data = await api.get('/api/admin/roles')
+      setRoles(data || [])
+    } catch (err) {
+      console.error('Error loading roles:', err)
+      // Fallback to default roles if API fails
+      setRoles(['admin', 'farmer', 'customer', 'delivery'])
+    }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -1457,6 +1544,7 @@ function AdminUsers() {
 
   useEffect(() => {
     if (token) {
+      loadRoles()
       load()
     }
   }, [filter, token])
@@ -1497,11 +1585,13 @@ function AdminUsers() {
       <h3>User Management</h3>
       {users.length === 0 && !loading && <p>No users found.</p>}
       <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <select value={filter.role} onChange={(e) => setFilter({ ...filter, role: e.target.value })}>
+        <select value={filter.role} onChange={(e) => setFilter({ ...filter, role: e.target.value })} className="select">
           <option value="">All Roles</option>
-          <option value="admin">Admin</option>
-          <option value="farmer">Farmer</option>
-          <option value="customer">Customer</option>
+          {roles.map((role) => (
+            <option key={role} value={role}>
+              {role.charAt(0).toUpperCase() + role.slice(1)}
+            </option>
+          ))}
         </select>
         <select value={filter.isApproved} onChange={(e) => setFilter({ ...filter, isApproved: e.target.value })}>
           <option value="">All Approval Status</option>
@@ -1641,15 +1731,21 @@ function AdminOrders() {
   const api = useApi()
   const { token } = useAuth()
   const [orders, setOrders] = useState([])
+  const [deliveryAgents, setDeliveryAgents] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [assigningOrder, setAssigningOrder] = useState(null)
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const data = await api.get('/api/admin/orders')
-      setOrders(data || [])
+      const [ordersData, agentsData] = await Promise.all([
+        api.get('/api/admin/orders'),
+        api.get('/api/admin/delivery-agents')
+      ])
+      setOrders(ordersData || [])
+      setDeliveryAgents(agentsData || [])
     } catch (err) {
       setError(err.message || 'Failed to load orders')
       console.error('Error loading orders:', err)
@@ -1673,39 +1769,263 @@ function AdminOrders() {
     }
   }
 
-  if (loading) return <p>Loading orders...</p>
-  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
+  const assignDeliveryAgent = async (orderId, agentId) => {
+    try {
+      await api.put(`/api/admin/orders/${orderId}/assign-delivery`, { deliveryAgentId: agentId })
+      await load()
+      setAssigningOrder(null)
+      alert('Delivery agent assigned successfully!')
+    } catch (err) {
+      alert(err.message || 'Failed to assign delivery agent')
+    }
+  }
+
+  if (loading) return <div className="loading">Loading orders...</div>
+  if (error) return <div className="error">Error: {error}</div>
 
   return (
     <div>
-      <h3>All Orders Monitoring</h3>
+      <h3 style={{ marginBottom: '1.5rem' }}>All Orders Monitoring</h3>
       <div style={{ marginTop: '1rem' }}>
         {orders.length === 0 && !loading && <p>No orders found.</p>}
         {orders.map((o) => (
-          <div key={o._id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
-            <p>
-              <strong>Order ID:</strong> {o._id.slice(-8)} | <strong>Customer:</strong> {o.user?.name} ({o.user?.email}) |{' '}
-              <strong>Status:</strong> {o.status} | <strong>Total:</strong> ₹{o.totalAmount}
-            </p>
-            <p>
+          <div key={o._id} className="card" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Order ID:</strong> {o._id.slice(-8)} | <strong>Customer:</strong> {o.user?.name} ({o.user?.email}) |{' '}
+                  <strong>Status:</strong> {o.status} | <strong>Total:</strong> ₹{o.totalAmount}
+                </p>
+                {o.deliveryAgent && (
+                  <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+                    <strong>Delivery Agent:</strong> {o.deliveryAgent.name} ({o.deliveryAgent.email}) |{' '}
+                    <strong>Delivery Status:</strong> {o.deliveryStatus || 'Not assigned'}
+                  </p>
+                )}
+              </div>
+            </div>
+            <p style={{ marginBottom: '0.5rem' }}>
               <strong>Items:</strong>
             </p>
-            <ul>
+            <ul style={{ marginBottom: '1rem' }}>
               {o.items.map((item, idx) => (
-                <li key={idx}>
+                <li key={idx} style={{ marginBottom: '0.25rem' }}>
                   {item.product?.title || 'Product removed'} - Qty: {item.quantity} (Farmer: {item.product?.farmer?.name || 'Unknown'})
                 </li>
               ))}
             </ul>
-            <div style={{ marginTop: '0.5rem' }}>
-              <button onClick={() => updateStatus(o._id, 'Accepted')}>Accept</button>{' '}
-              <button onClick={() => updateStatus(o._id, 'Packed')}>Pack</button>{' '}
-              <button onClick={() => updateStatus(o._id, 'Delivered')}>Deliver</button>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Accept</button>
+              <button onClick={() => updateStatus(o._id, 'Packed')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Pack</button>
+              <button onClick={() => updateStatus(o._id, 'Delivered')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Deliver</button>
+              {(o.status === 'Accepted' || o.status === 'Packed') && !o.deliveryAgent && (
+                <button 
+                  onClick={() => setAssigningOrder(assigningOrder === o._id ? null : o._id)} 
+                  className="btn btn-primary" 
+                  style={{ fontSize: '0.9rem' }}
+                >
+                  {assigningOrder === o._id ? 'Cancel' : 'Assign Delivery'}
+                </button>
+              )}
             </div>
-            <small>Created: {new Date(o.createdAt).toLocaleString()}</small>
+            {assigningOrder === o._id && (
+              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Select Delivery Agent:</label>
+                {deliveryAgents.length === 0 ? (
+                  <p style={{ color: '#6c757d' }}>No delivery agents available</p>
+                ) : (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {deliveryAgents.map((agent) => (
+                      <button
+                        key={agent._id}
+                        onClick={() => assignDeliveryAgent(o._id, agent._id)}
+                        className="btn btn-primary"
+                        style={{ fontSize: '0.9rem' }}
+                      >
+                        {agent.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <small style={{ color: '#6c757d' }}>Created: {new Date(o.createdAt).toLocaleString()}</small>
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+function DeliveryOrders() {
+  const api = useApi()
+  const { token } = useAuth()
+  const [orders, setOrders] = useState([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [updatingOrder, setUpdatingOrder] = useState(null)
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await api.get('/api/delivery/orders')
+      setOrders(data || [])
+    } catch (err) {
+      setError(err.message || 'Failed to load orders')
+      console.error('Error loading orders:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (token) {
+      load()
+    }
+  }, [token])
+
+  const updateDeliveryStatus = async (orderId, deliveryStatus) => {
+    setUpdatingOrder(orderId)
+    try {
+      await api.put(`/api/delivery/orders/${orderId}/status`, { deliveryStatus })
+      await load()
+      alert('Delivery status updated successfully!')
+    } catch (err) {
+      alert(err.message || 'Failed to update delivery status')
+    } finally {
+      setUpdatingOrder(null)
+    }
+  }
+
+  const getDeliveryStatusColor = (status) => {
+    const colors = {
+      Assigned: '#ffc107',
+      Picked: '#17a2b8',
+      Delivered: '#28a745',
+    }
+    return colors[status] || '#6c757d'
+  }
+
+  if (loading) return <div className="loading">Loading orders...</div>
+  if (error) return <div className="error">Error: {error}</div>
+
+  return (
+    <div>
+      <h3 style={{ marginBottom: '1.5rem' }}>My Delivery Orders</h3>
+      {orders.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+          <p style={{ color: '#6c757d' }}>No orders assigned to you yet.</p>
+        </div>
+      ) : (
+        orders.map((o) => (
+          <div key={o._id} className="card" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0.25rem 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  Order #{o._id.slice(-8)}
+                </p>
+                <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+                  Created: {new Date(o.createdAt).toLocaleString()}
+                </p>
+                <p style={{ margin: '0.5rem 0', fontSize: '1.25rem', fontWeight: 'bold', color: '#28a745' }}>
+                  Total: ₹{o.totalAmount}
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                <span 
+                  className="badge"
+                  style={{
+                    backgroundColor: getDeliveryStatusColor(o.deliveryStatus),
+                    color: o.deliveryStatus === 'Assigned' ? '#000' : 'white'
+                  }}
+                >
+                  {o.deliveryStatus}
+                </span>
+                <span 
+                  className="badge"
+                  style={{
+                    backgroundColor: o.status === 'Pending' ? '#ffc107' : o.status === 'Accepted' ? '#17a2b8' : o.status === 'Packed' ? '#007bff' : '#28a745',
+                    color: o.status === 'Pending' ? '#000' : 'white',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  Order: {o.status}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
+              <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Customer Information</h4>
+              <p style={{ margin: '0.5rem 0' }}><strong>Name:</strong> {o.user?.name || 'N/A'}</p>
+              <p style={{ margin: '0.5rem 0' }}><strong>Email:</strong> {o.user?.email || 'N/A'}</p>
+              <p style={{ margin: '0.5rem 0' }}><strong>Phone:</strong> {o.user?.phoneNumber || 'N/A'}</p>
+              <p style={{ margin: '0.5rem 0' }}><strong>Address:</strong> {o.user?.address || 'N/A'}</p>
+              {o.user?.place && <p style={{ margin: '0.5rem 0' }}><strong>Place:</strong> {o.user?.place}</p>}
+              {o.user?.landmark && <p style={{ margin: '0.5rem 0' }}><strong>Landmark:</strong> {o.user?.landmark}</p>}
+              {o.user?.pincode && <p style={{ margin: '0.5rem 0' }}><strong>Pincode:</strong> {o.user?.pincode}</p>}
+            </div>
+
+            <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
+              <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Order Items & Farmer Information</h4>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                {o.items.map((item, idx) => {
+                  const farmer = item.product?.farmer
+                  return (
+                    <li key={idx} style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'white', borderRadius: '4px' }}>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <strong>{item.product?.title || 'Product removed'}</strong>
+                        <span style={{ color: '#6c757d', marginLeft: '0.5rem' }}>
+                          • Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹{(item.quantity * (item.product?.price || 0)).toFixed(2)}
+                        </span>
+                      </div>
+                      {farmer && (
+                        <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#e9ecef', borderRadius: '4px' }}>
+                          <p style={{ margin: '0.25rem 0', fontWeight: 'bold' }}>Farmer: {farmer.name}</p>
+                          <p style={{ margin: '0.25rem 0' }}><strong>Phone:</strong> {farmer.phoneNumber || 'N/A'}</p>
+                          <p style={{ margin: '0.25rem 0' }}><strong>Address:</strong> {farmer.address || 'N/A'}</p>
+                          {farmer.place && <p style={{ margin: '0.25rem 0' }}><strong>Place:</strong> {farmer.place}</p>}
+                          {farmer.landmark && <p style={{ margin: '0.25rem 0' }}><strong>Landmark:</strong> {farmer.landmark}</p>}
+                          {farmer.pincode && <p style={{ margin: '0.25rem 0' }}><strong>Pincode:</strong> {farmer.pincode}</p>}
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Update Delivery Status:</label>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {o.deliveryStatus === 'Assigned' && (
+                  <button
+                    onClick={() => updateDeliveryStatus(o._id, 'Picked')}
+                    className="btn btn-primary"
+                    disabled={updatingOrder === o._id}
+                    style={{ fontSize: '0.9rem' }}
+                  >
+                    {updatingOrder === o._id ? 'Updating...' : 'Mark as Picked'}
+                  </button>
+                )}
+                {o.deliveryStatus === 'Picked' && (
+                  <button
+                    onClick={() => updateDeliveryStatus(o._id, 'Delivered')}
+                    className="btn btn-primary"
+                    disabled={updatingOrder === o._id}
+                    style={{ fontSize: '0.9rem' }}
+                  >
+                    {updatingOrder === o._id ? 'Updating...' : 'Mark as Delivered'}
+                  </button>
+                )}
+                {o.deliveryStatus === 'Delivered' && (
+                  <span style={{ color: '#28a745', fontWeight: 'bold' }}>✓ Order Delivered</span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   )
 }
@@ -1715,36 +2035,54 @@ function DashboardPage() {
 
   return (
     <Protected>
-      <div>
-        <h2>Dashboard</h2>
-        <p>
-          Logged in as <strong>{user?.name}</strong> ({user?.role})
-        </p>
-        <button onClick={logout}>Logout</button>
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <div style={{ position: 'relative', minHeight: '100vh' }}>
+        {/* Header container with logout button aligned to bottom-left */}
+        <div className="card" style={{ marginBottom: '2rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Dashboard</h2>
+          <p style={{ marginBottom: '1rem', color: '#6c757d' }}>
+            Logged in as <strong style={{ color: '#212529' }}>{user?.name}</strong> ({user?.role})
+          </p>
+          <button 
+            onClick={logout}
+            className="btn btn-danger"
+            style={{
+              marginTop: '0.5rem'
+            }}
+          >
+            Logout
+          </button>
+        </div>
+        <div className="card" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           {user?.role === 'customer' && (
             <>
-              <Link to="/dashboard/customer/stats">Dashboard</Link>
-              <Link to="/dashboard/customer/profile">Profile</Link>
-              <Link to="/dashboard/customer/orders">My Orders</Link>
+              <Link to="/dashboard/customer/stats" className="nav-link">Dashboard</Link>
+              <Link to="/dashboard/customer/profile" className="nav-link">Profile</Link>
+              <Link to="/dashboard/customer/orders" className="nav-link">My Orders</Link>
             </>
           )}
           {user?.role === 'farmer' && (
             <>
-              <Link to="/dashboard/farmer/stats">Dashboard</Link>
-              <Link to="/dashboard/farmer/profile">Profile</Link>
-              <Link to="/dashboard/farmer/products">My Products</Link>
-              <Link to="/dashboard/farmer/orders">Orders</Link>
+              <Link to="/dashboard/farmer/stats" className="nav-link">Dashboard</Link>
+              <Link to="/dashboard/farmer/profile" className="nav-link">Profile</Link>
+              <Link to="/dashboard/farmer/products" className="nav-link">My Products</Link>
+              <Link to="/dashboard/farmer/orders" className="nav-link">Orders</Link>
             </>
           )}
           {user?.role === 'admin' && (
             <>
-              <Link to="/dashboard/admin/stats">Statistics</Link>
-              <Link to="/dashboard/admin/users">Users</Link>
-              <Link to="/dashboard/admin/products">Products</Link>
-              <Link to="/dashboard/admin/orders">Orders</Link>
+              <Link to="/dashboard/admin/stats" className="nav-link">Statistics</Link>
+              <Link to="/dashboard/admin/users" className="nav-link">Users</Link>
+              <Link to="/dashboard/admin/products" className="nav-link">Products</Link>
+              <Link to="/dashboard/admin/orders" className="nav-link">Orders</Link>
             </>
           )}
+          {user?.role === 'delivery' && (
+            <>
+              <Link to="/dashboard/delivery/orders" className="nav-link">My Orders</Link>
+            </>
+          )}
+          </div>
         </div>
 
         <div style={{ marginTop: '1rem' }}>
@@ -1756,6 +2094,8 @@ function DashboardPage() {
                   <Navigate to="/dashboard/farmer/stats" replace />
                 ) : user?.role === 'admin' ? (
                   <Navigate to="/dashboard/admin/stats" replace />
+                ) : user?.role === 'delivery' ? (
+                  <Navigate to="/dashboard/delivery/orders" replace />
                 ) : (
                   <Navigate to="/dashboard/customer/stats" replace />
                 )
@@ -1772,6 +2112,7 @@ function DashboardPage() {
             <Route path="admin/users" element={<AdminUsers />} />
             <Route path="admin/products" element={<AdminProducts />} />
             <Route path="admin/orders" element={<AdminOrders />} />
+            <Route path="delivery/orders" element={<DeliveryOrders />} />
           </Routes>
         </div>
       </div>

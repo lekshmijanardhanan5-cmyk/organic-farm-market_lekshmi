@@ -45,35 +45,39 @@ function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 450, margin: '2rem auto' }}>
+    <div style={{ maxWidth: 450, margin: '3rem auto' }}>
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', textAlign: 'center', color: '#28a745' }}>Login</h2>
+        <h2 style={{ marginTop: 0, marginBottom: '2rem', textAlign: 'center', color: '#28a745' }}>Login</h2>
         {error && <div className="error">{error}</div>}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading}
-            className="input"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={loading}
-            className="input"
-          />
-          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+              className="input"
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+              className="input"
+            />
+          </div>
+          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-        <p style={{ marginTop: '1.5rem', textAlign: 'center', color: '#6c757d' }}>
-          Don't have an account? <Link to="/register" style={{ color: '#28a745', fontWeight: 500 }}>Register here</Link>
+        <p style={{ marginTop: '2rem', textAlign: 'center', color: '#6c757d', fontSize: '0.95rem' }}>
+          Don't have an account? <Link to="/register" style={{ color: '#28a745', fontWeight: 500, textDecoration: 'none' }}>Register here</Link>
         </p>
       </div>
     </div>

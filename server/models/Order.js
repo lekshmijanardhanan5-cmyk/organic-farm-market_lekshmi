@@ -18,6 +18,12 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Accepted", "Packed", "Delivered"],
       default: "Pending",
     },
+    deliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    deliveryStatus: {
+      type: String,
+      enum: ["Assigned", "Picked", "Delivered"],
+      default: null,
+    },
   },
   { timestamps: true }
 );
