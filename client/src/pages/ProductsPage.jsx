@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useApi, apiRequest } from '../services/api'
 
@@ -98,14 +98,16 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
 
   return (
     <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {product.imageUrl && (
-        <img
-          src={product.imageUrl}
-          alt={product.title}
-          style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: '4px', marginBottom: '0.5rem' }}
-        />
-      )}
-      <h3 style={{ margin: '0.5rem 0' }}>{product.title}</h3>
+      <Link to={`/product/${product._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+        {product.imageUrl && (
+          <img
+            src={product.imageUrl}
+            alt={product.title}
+            style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: '4px', marginBottom: '0.5rem', cursor: 'pointer' }}
+          />
+        )}
+        <h3 style={{ margin: '0.5rem 0', cursor: 'pointer', color: '#28a745' }}>{product.title}</h3>
+      </Link>
       {avgRating && (
         <div style={{ marginBottom: '0.5rem' }}>
           <span style={{ fontWeight: 'bold' }}>⭐ {avgRating}</span>

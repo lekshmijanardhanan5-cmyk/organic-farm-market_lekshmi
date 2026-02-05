@@ -2,6 +2,7 @@ import { Routes, Route, Link, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ProductsPage from './pages/ProductsPage'
+import ProductDetailsPage from './pages/ProductDetailsPage'
 import DashboardPage from './pages/DashboardPage'
 
 import { useAuth } from './context/AuthContext'
@@ -50,6 +51,7 @@ function App() {
 
       <Routes>
         <Route path="/" element={<ProductsPage />} />
+        <Route path="/product/:id" element={<ProductDetailsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard/*" element={<DashboardPage />} />
