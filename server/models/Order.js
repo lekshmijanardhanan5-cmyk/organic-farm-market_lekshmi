@@ -24,6 +24,22 @@ const orderSchema = new mongoose.Schema(
       enum: ["Assigned", "Picked", "Delivered"],
       default: null,
     },
+    paymentMethod: {
+      type: String,
+      enum: ["COD", "UPI"],
+      default: "COD",
+    },
+    upiId: {
+      type: String,
+      required: function () {
+        return this.paymentMethod === "UPI";
+      },
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Paid", "Failed"],
+      default: "Pending",
+    },
   },
   { timestamps: true }
 );

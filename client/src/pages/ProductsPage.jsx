@@ -6,6 +6,10 @@ import { useApi, apiRequest } from '../services/api'
 function ProductCard({ product, user, api, onOrderSuccess }) {
   const { token } = useAuth()
   const [quantity, setQuantity] = useState(1)
+  const [paymentMethod, setPaymentMethod] = useState('COD')
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState('')
+  const [selectedUpi, setSelectedUpi] = useState('')
   const [reviews, setReviews] = useState([])
   const [showReviews, setShowReviews] = useState(false)
   const [showReviewForm, setShowReviewForm] = useState(false)
@@ -62,16 +66,9 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
     if (!user) {
       return
     }
-    try {
-      await api.post('/api/orders', {
-        items: [{ product: product._id, quantity: Number(quantity) || 1 }],
-      })
-      alert('Order placed successfully!')
-      setQuantity(1)
-      if (onOrderSuccess) onOrderSuccess()
-    } catch (err) {
-      alert(err.message || 'Failed to place order')
-    }
+    // Open payment modal to select payment method
+    setSelectedPayment('')
+    setShowPaymentModal(true)
   }
 
   const handleReviewSubmit = async (e) => {
@@ -126,18 +123,102 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
         </div>
       </div>
       {user?.role === 'customer' && product.isAvailable && (
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <input
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className="input"
-            style={{ width: 80 }}
-          />
-          <button onClick={handleOrder} className="btn btn-primary" style={{ flex: 1 }}>
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="input"
+              style={{ width: 80 }}
+            />
+          </div>
+          <button onClick={handleOrder} className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
             Order Now
           </button>
+        </div>
+      )}
+      {/* Payment modal for quick order */}
+      {showPaymentModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: 420, padding: '1rem' }}>
+            <h4 style={{ marginTop: 0 }}>Select Payment Method</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
+              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="radio" name={`modal-payment-${product._id}`} value="COD" checked={selectedPayment === 'COD'} onChange={(e) => setSelectedPayment(e.target.value)} />
+                <span>Cash on Delivery</span>
+              </label>
+              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="radio" name={`modal-payment-${product._id}`} value="UPI" checked={selectedPayment === 'UPI'} onChange={(e) => setSelectedPayment(e.target.value)} />
+                <span>UPI</span>
+              </label>
+              {selectedPayment === 'UPI' && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ fontWeight: 500 }}>Enter UPI ID</label>
+                  <input
+                    type="text"
+                    value={selectedUpi}
+                    onChange={(e) => setSelectedUpi(e.target.value)}
+                    placeholder="example@upi"
+                    className="input"
+                    style={{ padding: '0.5rem' }}
+                  />
+                  {selectedUpi && !/^[^\s@]+@[^\s@]+$/.test(selectedUpi) && (
+                    <small style={{ color: '#dc3545' }}>Enter a valid UPI ID (e.g., name@upi)</small>
+                  )}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => { setShowPaymentModal(false); setSelectedPayment(''); setSelectedUpi(''); }}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                disabled={!selectedPayment || (selectedPayment === 'UPI' && !selectedUpi)}
+                onClick={async () => {
+                  try {
+                    if (selectedPayment === 'UPI') {
+                      // Simulate demo payment
+                      await new Promise((r) => setTimeout(r, 700))
+                      alert('Payment successful (Demo Mode)')
+                      await api.post('/api/orders', {
+                        items: [{ product: product._id, quantity: Number(quantity) || 1 }],
+                        paymentMethod: 'UPI',
+                        upiId: selectedUpi.trim(),
+                        paymentStatus: 'Paid',
+                      })
+                      alert('Order placed successfully!')
+                    } else {
+                      await api.post('/api/orders', {
+                        items: [{ product: product._id, quantity: Number(quantity) || 1 }],
+                        paymentMethod: selectedPayment,
+                      })
+                      alert('Order placed successfully!')
+                    }
+                    setQuantity(1)
+                    setShowPaymentModal(false)
+                    setSelectedUpi('')
+                    if (onOrderSuccess) onOrderSuccess()
+                  } catch (err) {
+                    alert(err.message || 'Failed to place order')
+                  }
+                }}
+              >
+                {selectedPayment === 'UPI' ? 'Pay Now (Demo)' : 'Confirm Order'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {!product.isAvailable && <p style={{ color: 'red', marginTop: '0.5rem' }}>Currently unavailable</p>}

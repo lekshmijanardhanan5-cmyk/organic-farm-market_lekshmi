@@ -7,6 +7,7 @@ const router = express.Router();
 
 // All delivery routes require delivery role
 router.use(auth, allowRoles("delivery"));
+const orderEvents = require("../utils/orderEvents");
 
 // Get orders assigned to this delivery agent
 router.get("/orders", async (req, res) => {
@@ -56,6 +57,13 @@ router.put("/orders/:id/status", async (req, res) => {
     }
 
     await order.save();
+
+    // Emit event for this order so customers/farmers admin can get realtime updates
+    try {
+      orderEvents.emit(`order:${order._id}`, { deliveryStatus: order.deliveryStatus, status: order.status });
+    } catch (e) {
+      console.error("Failed to emit delivery status event", e);
+    }
 
     // Populate before returning
     await order.populate([

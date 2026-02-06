@@ -10,6 +10,7 @@ const farmerRoutes = require("./routes/farmer");
 const reviewRoutes = require("./routes/reviews");
 const customerRoutes = require("./routes/customer");
 const deliveryRoutes = require("./routes/delivery");
+const orderPaymentRoutes = require("./routes/order_payment");
 
 // Load environment variables
 dotenv.config();
@@ -37,6 +38,7 @@ app.use("/api/farmer", farmerRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/delivery", deliveryRoutes);
+app.use("/api/order", orderPaymentRoutes);
 
 const PORT = process.env.PORT || 5000;
 

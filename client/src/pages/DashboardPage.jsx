@@ -1,7 +1,7 @@
 import { Link, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useApi } from '../services/api'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 function Protected({ children }) {
   const { user } = useAuth()
@@ -321,6 +321,7 @@ function CustomerOrders() {
   const [reviewingProduct, setReviewingProduct] = useState(null)
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' })
   const [productReviews, setProductReviews] = useState({}) // { productId: { canReview: bool, hasReviewed: bool } }
+  const eventSourcesRef = useRef({}) // orderId -> EventSource
 
   const load = async () => {
     setLoading(true)
@@ -345,6 +346,45 @@ function CustomerOrders() {
       load()
     }
   }, [token, filter])
+
+  // Subscribe to SSE for real-time order updates for each order (use token in query)
+  useEffect(() => {
+    if (!token || orders.length === 0) return
+
+    const esMap = eventSourcesRef.current || {}
+
+    orders.forEach((o) => {
+      if (esMap[o._id]) return // already subscribed
+      try {
+        const url = `/api/orders/subscribe/${o._id}?token=${encodeURIComponent(token)}`
+        const es = new EventSource(url)
+        es.onmessage = (ev) => {
+          try {
+            const data = JSON.parse(ev.data || "{}")
+            if (!data || !data.orderId) return
+            setOrders((prev) => prev.map(ord => ord._id === data.orderId ? { ...ord, ...data } : ord))
+          } catch (e) {
+            console.error("Failed to handle SSE message", e)
+          }
+        }
+        es.onerror = (err) => {
+          // close on error
+          es.close()
+          delete esMap[o._id]
+        }
+        esMap[o._id] = es
+      } catch (err) {
+        console.error("Failed to create EventSource for order", o._id, err)
+      }
+    })
+
+    // cleanup on unmount
+    return () => {
+      Object.values(esMap).forEach((s) => s && s.close())
+      eventSourcesRef.current = {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, token])
 
   // Check review eligibility for products in delivered orders
   useEffect(() => {
@@ -447,6 +487,21 @@ function CustomerOrders() {
                   <p style={{ margin: '0.5rem 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>
                     ₹{o.totalAmount}
                   </p>
+                  {o.paymentMethod && (
+                    <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.95rem' }}>
+                      <strong>Payment:</strong> {o.paymentMethod}
+                    </p>
+                  )}
+                  {o.paymentStatus && (
+                    <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.95rem' }}>
+                      <strong>Payment Status:</strong> {o.paymentStatus}
+                    </p>
+                  )}
+                  {o.paymentMethod === 'UPI' && o.upiId && (
+                    <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.95rem' }}>
+                      <strong>UPI ID:</strong> {o.upiId}
+                    </p>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                   <span 
@@ -1387,6 +1442,11 @@ function FarmerOrders() {
                     <p style={{ margin: '0.5rem 0', fontSize: '1.25rem', fontWeight: 'bold', color: '#28a745' }}>
                       My Products Subtotal: ₹{farmerSubtotal.toFixed(2)}
                     </p>
+                    {o.paymentMethod && (
+                      <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.95rem' }}>
+                        <strong>Payment:</strong> {o.paymentMethod}
+                      </p>
+                    )}
                   </div>
                   <span 
                     className="badge"
@@ -1796,6 +1856,16 @@ function AdminOrders() {
                   <strong>Order ID:</strong> {o._id.slice(-8)} | <strong>Customer:</strong> {o.user?.name} ({o.user?.email}) |{' '}
                   <strong>Status:</strong> {o.status} | <strong>Total:</strong> ₹{o.totalAmount}
                 </p>
+                {o.paymentMethod && (
+                  <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+                    <strong>Payment:</strong> {o.paymentMethod}
+                  </p>
+                )}
+                {o.paymentMethod === 'UPI' && o.upiId && (
+                  <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+                    <strong>UPI ID:</strong> {o.upiId}
+                  </p>
+                )}
                 {o.deliveryAgent && (
                   <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
                     <strong>Delivery Agent:</strong> {o.deliveryAgent.name} ({o.deliveryAgent.email}) |{' '}

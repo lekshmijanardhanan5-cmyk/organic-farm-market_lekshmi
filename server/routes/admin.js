@@ -9,6 +9,7 @@ const router = express.Router();
 
 // All admin routes require admin role
 router.use(auth, allowRoles("admin"));
+const orderEvents = require("../utils/orderEvents");
 
 // Get available user roles
 router.get("/roles", async (req, res) => {
@@ -191,6 +192,13 @@ router.put("/orders/:id/assign-delivery", async (req, res) => {
       },
       { path: "deliveryAgent", select: "name email phoneNumber" },
     ]);
+
+    // Emit order update event for real-time updates
+    try {
+      orderEvents.emit(`order:${order._id}`, { deliveryStatus: order.deliveryStatus, status: order.status, deliveryAgent: order.deliveryAgent });
+    } catch (e) {
+      console.error("Failed to emit order assignment event", e);
+    }
 
     return res.json(order);
   } catch (err) {
