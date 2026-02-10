@@ -118,7 +118,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
             ₹{product.price}
           </p>
           <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-            {product.category || 'Uncategorized'} | Farmer: {product.farmer?.name || 'Unknown'}
+            {product.category || 'Uncategorized'} | Farmer: {product.farmer?.name || 'Unknown'}{product.farmer?.place ? `, Place: ${product.farmer.place}` : ''}
           </p>
         </div>
       </div>

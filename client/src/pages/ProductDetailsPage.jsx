@@ -216,7 +216,7 @@ function ProductDetailsPage() {
                 <strong>Category:</strong> {product.category || 'Uncategorized'}
               </p>
               <p style={{ margin: '0.25rem 0' }}>
-                <strong>Farmer:</strong> {product.farmer?.name || 'Unknown'}
+                <strong>Farmer:</strong> {product.farmer?.name || 'Unknown'}{product.farmer?.place ? `, Place: ${product.farmer.place}` : ''}
               </p>
               <p style={{ margin: '0.25rem 0' }}>
                 <strong>Availability:</strong>{' '}

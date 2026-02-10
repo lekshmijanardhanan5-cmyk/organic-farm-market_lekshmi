@@ -92,7 +92,23 @@ router.get("/profile", auth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    return res.json(user);
+    // Return a normalized user object with `id` (matches login/register response)
+    return res.json({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isApproved: user.isApproved,
+      isBlocked: user.isBlocked,
+      phoneNumber: user.phoneNumber || "",
+      address: user.address || "",
+      place: user.place || "",
+      landmark: user.landmark || "",
+      pincode: user.pincode || "",
+      farmName: user.farmName || "",
+      productTypes: user.productTypes || [],
+      yearsOfExperience: user.yearsOfExperience || 0,
+    });
   } catch (err) {
     return res.status(500).json({ message: "Could not fetch profile", error: err.message });
   }

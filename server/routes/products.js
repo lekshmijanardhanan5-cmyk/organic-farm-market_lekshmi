@@ -12,7 +12,7 @@ router.get("/", async (_req, res) => {
     const products = await Product.find()
       .populate({
         path: "farmer",
-        select: "name email role isApproved",
+        select: "name email role isApproved place",
         match: { isApproved: true, isBlocked: false },
       })
       .lean();
@@ -31,7 +31,7 @@ router.get("/:id", async (req, res) => {
     const product = await Product.findById(req.params.id)
       .populate({
         path: "farmer",
-        select: "name email role isApproved",
+        select: "name email role isApproved place",
       })
       .lean();
     

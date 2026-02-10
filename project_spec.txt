@@ -15,76 +15,55 @@ A digital platform that directly connects verified local organic farmers with co
 
 4. USER ROLES & PERMISSIONS
 ---------------------------
-1. Admin
-Farmer approve / reject
-Products & orders monitor
-Fake users block
-Delivery agents manage
-Assign delivery agents to orders
-Purpose: System control & trust
+This simplified academic model contains three user roles: Admin, Farmer, and Customer. Roles are mutually exclusive and determine which parts of the system a user can access and which actions they may perform.
 
-2. Farmer
-Profile create
-Products add / update
-Price set
-Orders manage (only own products)
-Purpose: Direct selling
+- **Admin**
+  - Can approve or reject farmer registrations (manage farmer approval state).
+  - Can view, create, update, and delete any product.
+  - Can view and manage all orders in the system.
+  - Can block or delete user accounts.
+  - Purpose: overall system administration and trust/quality control.
 
-3. Customer
-Products view
-Order place
-Review give
-Product details view
-Purpose: Buy organic products
+- **Farmer**
+  - Can create and update their own profile.
+  - Can create, update, and delete products they own.
+  - Can view and manage orders that contain their products (accept, pack, mark as delivered).
+  - Cannot manage other farmers' products or orders.
+  - Purpose: list and sell produce and manage order fulfillment for their products.
 
-4. Delivery Agent
-View assigned orders
-View customer & farmer addresses
-Update delivery status (Assigned → Picked → Delivered)
-Purpose: Handle order delivery
+- **Customer**
+  - Can browse and view products and product details.
+  - Can place orders for available products.
+  - Can view their own order history and order statuses.
+  - Purpose: purchase products from farmers.
 
 5. DATABASE STRUCTURE (Schemas)
 -------------------------------
+
+   The simplified database for the academic model contains three schemas: User, Product, and Order. Each schema focuses only on the fields required for core functionality.
 
    A. User Schema
 Name (String)
 Email (String, Unique)
 Password (String, Hashed)
-Role (String: 'admin' | 'farmer' | 'customer' | 'delivery')
-PhoneNumber (String)
-Address (String)
-Place (String)
-Landmark (String)
-Pincode (String)
-IsApproved (Boolean, Default: false for farmers)
-IsBlocked (Boolean, Default: false)
+Role (String: 'admin' | 'farmer' | 'customer')
 CreatedAt (Timestamp)
-B. Product Schema (Organic Items)
-Title (String, e.g., "Organic Tomato")
-Description (String, e.g., "Naturally grown, pesticide-free")
+
+   B. Product Schema
+Title (String)
+Description (String)
 Price (Number)
-Category (String, e.g., "Vegetables", "Fruits")
+Category (String)
 ImageURL (String)
 FarmerID (Reference to User)
 IsAvailable (Boolean, Default: true)
 CreatedAt (Timestamp)
-FarmerID illaatha product = logical mistake. Nee avoid cheythu ithu.
-C. Order Schema
+
+   C. Order Schema
 UserID (Reference to User – Customer)
-Items (Array of Objects)
-ItemID (Reference to Product)
-Quantity (Number)
+Items (Array of Objects: { ItemID (Reference to Product), Quantity (Number) })
 TotalAmount (Number)
 Status (String: 'Pending' | 'Accepted' | 'Packed' | 'Delivered')
-DeliveryAgent (Reference to User – Delivery Agent, Optional)
-DeliveryStatus (String: 'Assigned' | 'Picked' | 'Delivered', Optional)
-CreatedAt (Timestamp)
-
-D. Review Schema
-ProductID (Reference to Product)
-UserID (Reference to User – Customer)
-Rating (Number, 1-5)
-Comment (String, Optional)
 CreatedAt (Timestamp)
 
 
@@ -98,8 +77,7 @@ User sees a grid/list of Organic Products (fetched from database).
 User can click on any product to view detailed product information.
 
 3. Product Details
-User views full product details including description, price, farmer info, and reviews.
-Logged-in customers can add reviews if they have received delivered orders.
+User views full product details including description, price, and farmer info.
 
 4. Order
 User clicks "Order Now" on a selected product and enters quantity.
@@ -109,20 +87,15 @@ The system creates a new Order document in MongoDB with status Pending.
 Farmer/Admin refreshes dashboard and sees the new order.
 Farmer can accept/pack orders containing their products.
 
-6. Delivery Assignment
-Admin assigns a delivery agent to accepted/packed orders.
+6. Order Fulfillment & Notifications
+After an order is placed:
+- The order appears in the farmer's dashboard (farmers see only orders containing their products).
+- The farmer can accept and pack orders that include their products and mark them as delivered when complete.
+- Admins can also view and update order statuses across the system.
+- Users see order status updates in their order history (Pending → Accepted → Packed → Delivered).
 
-7. Delivery Process
-Delivery agent views assigned orders with customer and farmer addresses.
-Delivery agent updates status: Assigned → Picked → Delivered.
-When marked "Delivered", order status automatically updates to "Delivered".
-
-8. Review
-Customer can review products after order is delivered.
-Reviews are displayed on product details page.
-
-9. User Notification
-User sees the order status updated (Pending → Accepted → Packed → Delivered).
+User Notification
+Users see the order status updated (Pending → Accepted → Packed → Delivered) within their order history.
 7. API ENDPOINTS (The URL Rules)
 --------------------------------
 Authentication
@@ -136,7 +109,7 @@ GET /api/users/profile → Get logged-in user profile
 PUT /api/users/profile → Update user profile
 
 Customer
-GET /api/customer/stats → Get customer statistics (orders, reviews, total spent)
+GET /api/customer/stats → Get customer statistics (orders, total spent)
 
 Farmer
 GET /api/farmer/products → Get farmer's own products
@@ -156,12 +129,6 @@ GET /api/orders/user → Get user orders (with optional status filter)
 GET /api/orders/farmer → Get farmer orders (only products from logged-in farmer, with optional status filter)
 PUT /api/orders/:id/status → Update order status (Farmer/Admin)
 
-Reviews
-GET /api/reviews/product/:productId → Get reviews for a product (public)
-POST /api/reviews → Create review (Customer only, requires delivered order)
-GET /api/reviews/my-reviews → Get logged-in customer's reviews
-GET /api/reviews/can-review/:productId → Check if customer can review product
-
 Admin
 GET /api/admin/roles → Get available user roles
 GET /api/admin/users → Get all users (with optional filters: role, isApproved, isBlocked)
@@ -170,9 +137,6 @@ PUT /api/admin/users/:id/block → Block/unblock user
 DELETE /api/admin/users/:id → Delete user
 GET /api/admin/products → Get all products
 GET /api/admin/orders → Get all orders
-GET /api/admin/delivery-agents → Get all delivery agents
-PUT /api/admin/orders/:id/assign-delivery → Assign delivery agent to order
+ 
 
-Delivery
-GET /api/delivery/orders → Get orders assigned to logged-in delivery agent
-PUT /api/delivery/orders/:id/status → Update delivery status (Assigned/Picked/Delivered)
+ 
