@@ -1,4 +1,4 @@
-import { Link, Routes, Route, Navigate } from 'react-router-dom'
+import { Link, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useApi } from '../services/api'
 import { useEffect, useState, useRef } from 'react'
@@ -513,23 +513,7 @@ function CustomerOrders() {
                   >
                     {o.status}
                   </span>
-                  {o.deliveryStatus && (
-                    <span 
-                      className="badge"
-                      style={{
-                        backgroundColor: o.deliveryStatus === 'Assigned' ? '#ffc107' : o.deliveryStatus === 'Picked' ? '#17a2b8' : '#28a745',
-                        color: o.deliveryStatus === 'Assigned' ? '#000' : 'white',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      Delivery: {o.deliveryStatus}
-                    </span>
-                  )}
-                  {o.deliveryAgent && (
-                    <span style={{ fontSize: '0.85rem', color: '#6c757d', marginTop: '0.25rem' }}>
-                      Agent: {o.deliveryAgent.name}
-                    </span>
-                  )}
+                  
                 </div>
               </div>
               <button
@@ -1164,86 +1148,501 @@ function FarmerProducts() {
   }
 
   return (
-    <div>
-      <h3>My Products</h3>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={editing ? handleUpdate : handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 400, marginBottom: '1rem' }}>
-        <input
-          placeholder="Title"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          required
-        />
-        <input
-          type="number"
-          placeholder="Price (₹)"
-          value={form.price}
-          onChange={(e) => setForm({ ...form, price: e.target.value })}
-          required
-        />
-        <input
-          placeholder="Category (e.g., Vegetables, Fruits)"
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-        />
-        <input
-          placeholder="Image URL (optional)"
-          value={form.imageUrl}
-          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-        />
-        <textarea
-          placeholder="Description"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          rows={3}
-        />
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <input
-            type="checkbox"
-            checked={form.isAvailable}
-            onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })}
-          />
-          Available
-        </label>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="submit">{editing ? 'Update Product' : 'Add Product'}</button>
-          {editing && (
-            <button type="button" onClick={() => { setEditing(null); setForm({ title: '', price: '', description: '', category: '', imageUrl: '', isAvailable: true }) }}>
-              Cancel
-            </button>
-          )}
-        </div>
-      </form>
+    <div style={{ padding: '2rem 1rem', maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h2 style={{ 
+          fontSize: '2rem', 
+          fontWeight: '700', 
+          color: '#1a1a1a', 
+          marginBottom: '0.5rem',
+          letterSpacing: '-0.02em'
+        }}>
+          My Products
+        </h2>
+        <p style={{ color: '#6b7280', fontSize: '1rem' }}>
+          Manage your product catalog and inventory
+        </p>
+      </div>
 
-      <div style={{ marginTop: '1rem' }}>
-        <h4>Your Products ({products.length})</h4>
-        {products.length === 0 && <p>No products yet. Add your first product above!</p>}
-        {products.map((p) => (
-          <div key={p._id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '0.5rem', borderRadius: '4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-              <div style={{ flex: 1 }}>
-                <strong style={{ fontSize: '1.1rem' }}>{p.title}</strong>
-                <span style={{ marginLeft: '0.5rem', color: p.isAvailable ? 'green' : 'red' }}>
-                  ({p.isAvailable ? 'Available' : 'Unavailable'})
-                </span>
-                <p style={{ margin: '0.25rem 0' }}>₹{p.price} | {p.category || 'Uncategorized'}</p>
-                {p.description && <p style={{ margin: '0.25rem 0', color: '#666', fontSize: '0.9rem' }}>{p.description}</p>}
-                {p.imageUrl && (
-                  <img src={p.imageUrl} alt={p.title} style={{ maxWidth: '200px', maxHeight: '150px', marginTop: '0.5rem', borderRadius: '4px' }} />
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <button onClick={() => handleEdit(p)} style={{ fontSize: '0.9rem' }}>Edit</button>
-                <button onClick={() => toggleAvailability(p._id, p.isAvailable)} style={{ fontSize: '0.9rem' }}>
-                  {p.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
-                </button>
-                <button onClick={() => handleDelete(p._id)} style={{ fontSize: '0.9rem', backgroundColor: 'darkred', color: 'white' }}>
-                  Delete
-                </button>
-              </div>
-            </div>
+      {error && (
+        <div style={{
+          padding: '0.875rem 1rem',
+          backgroundColor: '#fee2e2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          color: '#991b1b',
+          marginBottom: '1.5rem',
+          fontSize: '0.875rem'
+        }}>
+          {error}
+        </div>
+      )}
+
+      {/* Add/Edit Product Form */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: '12px',
+        padding: '2rem',
+        marginBottom: '3rem',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+      }}>
+        <h3 style={{
+          fontSize: '1.5rem',
+          fontWeight: '600',
+          color: '#1a1a1a',
+          marginBottom: '1.5rem'
+        }}>
+          {editing ? 'Edit Product' : 'Add New Product'}
+        </h3>
+        <form onSubmit={editing ? handleUpdate : handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Product Title *
+            </label>
+            <input
+              placeholder="e.g., Fresh Organic Tomatoes"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              required
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '0.9375rem',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            />
           </div>
-        ))}
+
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Price (₹) *
+            </label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              required
+              min="0"
+              step="0.01"
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '0.9375rem',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            />
+          </div>
+
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Category
+            </label>
+            <input
+              placeholder="e.g., Vegetables, Fruits"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '0.9375rem',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            />
+          </div>
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Image URL
+            </label>
+            <input
+              placeholder="https://example.com/image.jpg"
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '0.9375rem',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            />
+          </div>
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Description
+            </label>
+            <textarea
+              placeholder="Describe your product..."
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '0.9375rem',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            />
+          </div>
+
+          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <input
+              type="checkbox"
+              id="isAvailable"
+              checked={form.isAvailable}
+              onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })}
+              style={{
+                width: '1.125rem',
+                height: '1.125rem',
+                cursor: 'pointer'
+              }}
+            />
+            <label htmlFor="isAvailable" style={{
+              fontSize: '0.9375rem',
+              color: '#374151',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}>
+              Product is available for purchase
+            </label>
+          </div>
+
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button
+              type="submit"
+              style={{
+                padding: '0.75rem 1.5rem',
+                backgroundColor: '#3b82f6',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.9375rem',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                flex: '0 0 auto'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
+            >
+              {editing ? 'Update Product' : 'Add Product'}
+            </button>
+            {editing && (
+              <button
+                type="button"
+                onClick={() => { setEditing(null); setForm({ title: '', price: '', description: '', category: '', imageUrl: '', isAvailable: true }) }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#ffffff',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '0.9375rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => { e.target.style.backgroundColor = '#f9fafb'; e.target.style.borderColor = '#9ca3af' }}
+                onMouseLeave={(e) => { e.target.style.backgroundColor = '#ffffff'; e.target.style.borderColor = '#d1d5db' }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* Products Grid */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontWeight: '600',
+            color: '#1a1a1a'
+          }}>
+            Your Products
+          </h3>
+          <span style={{
+            padding: '0.375rem 0.875rem',
+            backgroundColor: '#eff6ff',
+            color: '#1e40af',
+            borderRadius: '9999px',
+            fontSize: '0.875rem',
+            fontWeight: '500'
+          }}>
+            {products.length} {products.length === 1 ? 'product' : 'products'}
+          </span>
+        </div>
+
+        {products.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '3rem 1rem',
+            backgroundColor: '#f9fafb',
+            border: '1px dashed #d1d5db',
+            borderRadius: '12px',
+            color: '#6b7280'
+          }}>
+            <p style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>No products yet</p>
+            <p style={{ fontSize: '0.875rem' }}>Add your first product using the form above!</p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: '1.5rem'
+          }}>
+            {products.map((p) => (
+              <div
+                key={p._id}
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {/* Product Image */}
+                <div style={{
+                  width: '100%',
+                  height: '200px',
+                  backgroundColor: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative'
+                }}>
+                  {p.imageUrl ? (
+                    <img
+                      src={p.imageUrl}
+                      alt={p.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div style={{
+                    display: p.imageUrl ? 'none' : 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                    height: '100%',
+                    color: '#9ca3af',
+                    fontSize: '3rem'
+                  }}>
+                    📦
+                  </div>
+                  {/* Availability Badge */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '0.75rem',
+                    right: '0.75rem',
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    backgroundColor: p.isAvailable ? '#dcfce7' : '#fee2e2',
+                    color: p.isAvailable ? '#166534' : '#991b1b',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                  }}>
+                    {p.isAvailable ? 'Available' : 'Unavailable'}
+                  </div>
+                </div>
+
+                {/* Product Info */}
+                <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: '600',
+                    color: '#1a1a1a',
+                    marginBottom: '0.5rem',
+                    lineHeight: '1.4'
+                  }}>
+                    {p.title}
+                  </h4>
+
+                  {p.category && (
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '0.25rem 0.625rem',
+                      backgroundColor: '#eff6ff',
+                      color: '#1e40af',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: '500',
+                      marginBottom: '0.75rem',
+                      width: 'fit-content'
+                    }}>
+                      {p.category}
+                    </span>
+                  )}
+
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
+                    color: '#059669',
+                    marginBottom: '0.75rem'
+                  }}>
+                    ₹{Number(p.price).toFixed(2)}
+                  </div>
+
+                  {p.description && (
+                    <p style={{
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                      lineHeight: '1.5',
+                      marginBottom: '1rem',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}>
+                      {p.description}
+                    </p>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '0.5rem',
+                    marginTop: 'auto',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid #e5e7eb'
+                  }}>
+                    <button
+                      onClick={() => handleEdit(p)}
+                      style={{
+                        flex: 1,
+                        padding: '0.625rem 1rem',
+                        backgroundColor: '#ffffff',
+                        color: '#3b82f6',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#eff6ff';
+                        e.target.style.borderColor = '#2563eb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = '#ffffff';
+                        e.target.style.borderColor = '#3b82f6';
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p._id)}
+                      style={{
+                        flex: 1,
+                        padding: '0.625rem 1rem',
+                        backgroundColor: '#ffffff',
+                        color: '#dc2626',
+                        border: '1px solid #dc2626',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#fee2e2';
+                        e.target.style.borderColor = '#b91c1c';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = '#ffffff';
+                        e.target.style.borderColor = '#dc2626';
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1508,57 +1907,635 @@ function FarmerOrders() {
   )
 }
 
+// Admin Layout Component with Sidebar and Header
+function AdminLayout({ children, pageTitle }) {
+  const { user, logout } = useAuth()
+  const location = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const navItems = [
+    { path: '/dashboard/admin/stats', label: 'Dashboard', icon: '📊' },
+    { path: '/dashboard/admin/users', label: 'Users', icon: '👥' },
+    { path: '/dashboard/admin/products', label: 'Products', icon: '📦' },
+    { path: '/dashboard/admin/orders', label: 'Orders', icon: '🛒' },
+  ]
+
+  const isActive = (path) => location.pathname === path
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      minHeight: '100vh', 
+      backgroundColor: '#f9fafb',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    }}>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        style={{
+          display: 'none',
+          position: 'fixed',
+          top: '1rem',
+          left: '1rem',
+          zIndex: 1001,
+          padding: '0.5rem',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '1.25rem'
+        }}
+        className="mobile-menu-btn"
+      >
+        ☰
+      </button>
+
+      {/* Sidebar Overlay (mobile only) */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            display: 'none',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 999
+          }}
+          className="sidebar-overlay"
+        />
+      )}
+
+      {/* Fixed Left Sidebar */}
+      <aside
+        className={sidebarOpen ? 'mobile-open' : ''}
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          width: '260px',
+          height: '100vh',
+          backgroundColor: '#ffffff',
+          borderRight: '1px solid #e5e7eb',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 1000,
+          boxShadow: '2px 0 4px rgba(0, 0, 0, 0.05)',
+          transition: 'transform 0.3s ease'
+        }}
+      >
+        {/* Sidebar Header */}
+        <div style={{
+          padding: '1.5rem',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <h2 style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: '#1a1a1a',
+            margin: 0,
+            letterSpacing: '-0.02em'
+          }}>
+            Admin Panel
+          </h2>
+        </div>
+
+        {/* Navigation Links */}
+        <nav style={{
+          flex: 1,
+          padding: '1rem 0',
+          overflowY: 'auto'
+        }}>
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.875rem 1.5rem',
+                margin: '0.25rem 0.75rem',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                color: isActive(item.path) ? '#3b82f6' : '#6b7280',
+                backgroundColor: isActive(item.path) ? '#eff6ff' : 'transparent',
+                fontWeight: isActive(item.path) ? '600' : '500',
+                fontSize: '0.9375rem',
+                transition: 'all 0.2s',
+                border: isActive(item.path) ? '1px solid #dbeafe' : '1px solid transparent'
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6'
+                  e.currentTarget.style.color = '#374151'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = '#6b7280'
+                }
+              }}
+            >
+              <span style={{ fontSize: '1.25rem' }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main Content Area */}
+      <div
+        className="admin-main-content"
+        style={{
+          marginLeft: '260px',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          transition: 'margin-left 0.3s ease'
+        }}
+      >
+        {/* Top Header */}
+        <header style={{
+          position: 'sticky',
+          top: 0,
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '1rem 2rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          zIndex: 100,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+        }}>
+          <h1 style={{
+            fontSize: '1.5rem',
+            fontWeight: '600',
+            color: '#1a1a1a',
+            margin: 0,
+            flex: 1,
+            textAlign: 'center'
+          }}>
+            {pageTitle || 'Dashboard'}
+          </h1>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
+            <span style={{
+              fontSize: '0.9375rem',
+              color: '#6b7280',
+              fontWeight: '500'
+            }}>
+              {user?.name || 'Admin'}
+            </span>
+            <button
+              onClick={logout}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#dc2626',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#b91c1c'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#dc2626'}
+            >
+              Logout
+            </button>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main style={{
+          flex: 1,
+          padding: '2rem',
+          overflowY: 'auto'
+        }}>
+          {children}
+        </main>
+      </div>
+
+      {/* Responsive Styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .mobile-menu-btn {
+            display: block !important;
+          }
+          .sidebar-overlay {
+            display: block !important;
+          }
+          aside {
+            transform: translateX(-100%);
+          }
+          aside.mobile-open {
+            transform: translateX(0);
+          }
+          .admin-main-content {
+            margin-left: 0 !important;
+          }
+        }
+        @media (max-width: 768px) {
+          /* Make stats grid 2 columns on tablet */
+          .admin-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 1rem !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .admin-main-content header {
+            padding: 1rem !important;
+            flex-direction: column;
+            gap: 0.75rem;
+          }
+          .admin-main-content header h1 {
+            font-size: 1.25rem !important;
+          }
+          .admin-main-content main {
+            padding: 1rem !important;
+          }
+          /* Make stats grid single column on very small screens */
+          .admin-stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+          }
+          /* Ensure cards maintain equal height on mobile */
+          .admin-stats-grid > div {
+            height: 160px !important;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 function AdminStats() {
   const api = useApi()
   const [stats, setStats] = useState(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true)
       try {
         const data = await api.get('/api/admin/stats')
         setStats(data)
       } catch (err) {
         setError(err.message)
+      } finally {
+        setLoading(false)
       }
     }
     load()
   }, [])
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>
-  if (!stats) return <p>Loading...</p>
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+        <p>Loading statistics...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        padding: '1rem',
+        backgroundColor: '#fee2e2',
+        border: '1px solid #fecaca',
+        borderRadius: '8px',
+        color: '#991b1b'
+      }}>
+        {error}
+      </div>
+    )
+  }
+
+  const statCards = [
+    {
+      title: 'Total Users',
+      value: stats.users.total,
+      icon: '👥',
+      color: '#2563eb', // Blue
+      bgColor: '#eff6ff',
+      borderColor: '#bfdbfe',
+      label: `Farmers: ${stats.users.farmers} • Customers: ${stats.users.customers}`,
+      onClick: () => window.location.href = '/dashboard/admin/users'
+    },
+    {
+      title: 'Total Orders',
+      value: stats.orders.total,
+      icon: '🛒',
+      color: '#2563eb', // Blue
+      bgColor: '#eff6ff',
+      borderColor: '#bfdbfe',
+      onClick: () => window.location.href = '/dashboard/admin/orders'
+    },
+    {
+      title: 'Total Revenue',
+      value: `₹${Number(stats.revenue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      icon: '💰',
+      color: '#16a34a', // Green
+      bgColor: '#dcfce7',
+      borderColor: '#bbf7d0',
+      onClick: () => window.location.href = '/dashboard/admin/orders'
+    },
+    {
+      title: 'Total Products',
+      value: stats.products.total,
+      icon: '📦',
+      color: '#2563eb', // Blue (can be changed if needed)
+      bgColor: '#eff6ff',
+      borderColor: '#bfdbfe',
+      onClick: () => window.location.href = '/dashboard/admin/products'
+    },
+    {
+      title: 'Pending Farmers',
+      value: stats.users.pendingFarmers,
+      icon: '⏳',
+      color: '#ea580c', // Orange
+      bgColor: '#fff7ed',
+      borderColor: '#fed7aa',
+      isCritical: stats.users.pendingFarmers > 0,
+      onClick: () => window.location.href = '/dashboard/admin/users?filter=pending'
+    },
+    {
+      title: 'Blocked Users',
+      value: stats.users.blockedUsers,
+      icon: '🚫',
+      color: '#dc2626', // Red
+      bgColor: '#fee2e2',
+      borderColor: '#fecaca',
+      isCritical: stats.users.blockedUsers > 0,
+      onClick: () => window.location.href = '/dashboard/admin/users?filter=blocked'
+    },
+  ]
 
   return (
-    <div>
-      <h3>Statistics Overview</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
-          <strong>Total Users</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0' }}>{stats.users.total}</p>
-          <small>Farmers: {stats.users.farmers} | Customers: {stats.users.customers}</small>
+    <AdminLayout pageTitle="Dashboard Overview">
+      <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+        {/* Welcome Section */}
+        <div style={{ marginBottom: '1.75rem' }}>
+          <h2 style={{
+            fontSize: '1.75rem',
+            fontWeight: '700',
+            color: '#111827',
+            marginBottom: '0.375rem',
+            letterSpacing: '-0.02em',
+            margin: 0
+          }}>
+            System Overview
+          </h2>
+          <p style={{
+            color: '#6b7280',
+            fontSize: '0.9375rem',
+            margin: 0
+          }}>
+            Monitor your platform's key metrics at a glance
+          </p>
         </div>
-        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
-          <strong>Pending Farmers</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: 'orange' }}>{stats.users.pendingFarmers}</p>
+
+        {/* Statistics Grid - Equal sized cards */}
+        <div 
+          className="admin-stats-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1.25rem',
+            marginBottom: '2rem'
+          }}>
+          {statCards.map((card, index) => (
+            <div
+              key={index}
+              onClick={card.onClick}
+              style={{
+                backgroundColor: card.bgColor,
+                border: `1px solid ${card.borderColor}`,
+                borderRadius: '10px',
+                padding: '1.5rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+                height: '160px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-start'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)'
+                e.currentTarget.style.borderColor = card.color
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)'
+                e.currentTarget.style.borderColor = card.borderColor
+              }}
+            >
+              {/* Icon and Critical Indicator Row */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '1rem'
+              }}>
+                {/* Icon */}
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '8px',
+                  backgroundColor: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  flexShrink: 0,
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                }}>
+                  {card.icon}
+                </div>
+
+                {/* Critical Indicator */}
+                {card.isCritical && (
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: card.color,
+                    animation: 'pulse 2s infinite',
+                    flexShrink: 0
+                  }} />
+                )}
+              </div>
+
+              {/* Value - Large, Bold Number */}
+              <div style={{
+                fontSize: '2.25rem',
+                fontWeight: '800',
+                color: card.color,
+                marginBottom: '0.5rem',
+                lineHeight: '1',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                letterSpacing: '-0.02em'
+              }}>
+                {card.value}
+              </div>
+
+              {/* Title - Medium */}
+              <div style={{
+                fontSize: '0.9375rem',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: card.label ? '0.25rem' : '0',
+                letterSpacing: '-0.01em',
+                lineHeight: '1.3'
+              }}>
+                {card.title}
+              </div>
+
+              {/* Label - Small Description */}
+              {card.label && (
+                <div style={{
+                  fontSize: '0.8125rem',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                  marginTop: '0.25rem'
+                }}>
+                  {card.label}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
-          <strong>Blocked Users</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: 'red' }}>{stats.users.blockedUsers}</p>
-        </div>
-        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
-          <strong>Total Products</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0' }}>{stats.products.total}</p>
-        </div>
-        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
-          <strong>Total Orders</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0' }}>{stats.orders.total}</p>
-        </div>
-        <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
-          <strong>Total Revenue</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: 'green' }}>₹{stats.revenue}</p>
+
+        {/* Quick Actions */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          padding: '1.75rem',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)'
+        }}>
+          <h3 style={{
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            color: '#111827',
+            marginBottom: '1.25rem',
+            letterSpacing: '-0.01em'
+          }}>
+            Quick Actions
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
+            <Link
+              to="/dashboard/admin/users"
+              style={{
+                padding: '0.875rem 1rem',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                color: '#374151',
+                fontSize: '0.9375rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                display: 'block',
+                textAlign: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e5e7eb'
+                e.currentTarget.style.borderColor = '#d1d5db'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f3f4f6'
+                e.currentTarget.style.borderColor = '#e5e7eb'
+              }}
+            >
+              Manage Users
+            </Link>
+            <Link
+              to="/dashboard/admin/products"
+              style={{
+                padding: '0.875rem 1rem',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                color: '#374151',
+                fontSize: '0.9375rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                display: 'block',
+                textAlign: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e5e7eb'
+                e.currentTarget.style.borderColor = '#d1d5db'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f3f4f6'
+                e.currentTarget.style.borderColor = '#e5e7eb'
+              }}
+            >
+              View Products
+            </Link>
+            <Link
+              to="/dashboard/admin/orders"
+              style={{
+                padding: '0.875rem 1rem',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                color: '#374151',
+                fontSize: '0.9375rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                display: 'block',
+                textAlign: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e5e7eb'
+                e.currentTarget.style.borderColor = '#d1d5db'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f3f4f6'
+                e.currentTarget.style.borderColor = '#e5e7eb'
+              }}
+            >
+              View Orders
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Pulse Animation for Critical Indicators */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
+    </AdminLayout>
   )
 }
 
@@ -1577,8 +2554,8 @@ function AdminUsers() {
       setRoles(data || [])
     } catch (err) {
       console.error('Error loading roles:', err)
-      // Fallback to default roles if API fails
-      setRoles(['admin', 'farmer', 'customer', 'delivery'])
+    // Fallback to default roles if API fails
+      setRoles(['admin', 'farmer', 'customer'])
     }
   }
 
@@ -1637,12 +2614,34 @@ function AdminUsers() {
     }
   }
 
-  if (loading) return <p>Loading users...</p>
-  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
+  if (loading) {
+    return (
+      <AdminLayout pageTitle="Users">
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+          <p>Loading users...</p>
+        </div>
+      </AdminLayout>
+    )
+  }
+  if (error) {
+    return (
+      <AdminLayout pageTitle="Users">
+        <div style={{
+          padding: '1rem',
+          backgroundColor: '#fee2e2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          color: '#991b1b'
+        }}>
+          Error: {error}
+        </div>
+      </AdminLayout>
+    )
+  }
 
   return (
-    <div>
-      <h3>User Management</h3>
+    <AdminLayout pageTitle="User Management">
+      <div>
       {users.length === 0 && !loading && <p>No users found.</p>}
       <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <select value={filter.role} onChange={(e) => setFilter({ ...filter, role: e.target.value })} className="select">
@@ -1718,7 +2717,8 @@ function AdminUsers() {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 
@@ -1759,12 +2759,34 @@ function AdminProducts() {
     }
   }
 
-  if (loading) return <p>Loading products...</p>
-  if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
+  if (loading) {
+    return (
+      <AdminLayout pageTitle="Products">
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+          <p>Loading products...</p>
+        </div>
+      </AdminLayout>
+    )
+  }
+  if (error) {
+    return (
+      <AdminLayout pageTitle="Products">
+        <div style={{
+          padding: '1rem',
+          backgroundColor: '#fee2e2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          color: '#991b1b'
+        }}>
+          Error: {error}
+        </div>
+      </AdminLayout>
+    )
+  }
 
   return (
-    <div>
-      <h3>All Products Management</h3>
+    <AdminLayout pageTitle="Product Management">
+      <div>
       <div style={{ marginTop: '1rem' }}>
         {products.length === 0 && !loading && <p>No products found.</p>}
         {products.map((p) => (
@@ -1783,7 +2805,8 @@ function AdminProducts() {
           </div>
         ))}
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 
@@ -1791,21 +2814,16 @@ function AdminOrders() {
   const api = useApi()
   const { token } = useAuth()
   const [orders, setOrders] = useState([])
-  const [deliveryAgents, setDeliveryAgents] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [assigningOrder, setAssigningOrder] = useState(null)
+  
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const [ordersData, agentsData] = await Promise.all([
-        api.get('/api/admin/orders'),
-        api.get('/api/admin/delivery-agents')
-      ])
+      const ordersData = await api.get('/api/admin/orders')
       setOrders(ordersData || [])
-      setDeliveryAgents(agentsData || [])
     } catch (err) {
       setError(err.message || 'Failed to load orders')
       console.error('Error loading orders:', err)
@@ -1829,23 +2847,36 @@ function AdminOrders() {
     }
   }
 
-  const assignDeliveryAgent = async (orderId, agentId) => {
-    try {
-      await api.put(`/api/admin/orders/${orderId}/assign-delivery`, { deliveryAgentId: agentId })
-      await load()
-      setAssigningOrder(null)
-      alert('Delivery agent assigned successfully!')
-    } catch (err) {
-      alert(err.message || 'Failed to assign delivery agent')
-    }
+  
+
+  if (loading) {
+    return (
+      <AdminLayout pageTitle="Orders">
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+          <p>Loading orders...</p>
+        </div>
+      </AdminLayout>
+    )
+  }
+  if (error) {
+    return (
+      <AdminLayout pageTitle="Orders">
+        <div style={{
+          padding: '1rem',
+          backgroundColor: '#fee2e2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          color: '#991b1b'
+        }}>
+          Error: {error}
+        </div>
+      </AdminLayout>
+    )
   }
 
-  if (loading) return <div className="loading">Loading orders...</div>
-  if (error) return <div className="error">Error: {error}</div>
-
   return (
-    <div>
-      <h3 style={{ marginBottom: '1.5rem' }}>All Orders Monitoring</h3>
+    <AdminLayout pageTitle="Order Management">
+      <div>
       <div style={{ marginTop: '1rem' }}>
         {orders.length === 0 && !loading && <p>No orders found.</p>}
         {orders.map((o) => (
@@ -1866,12 +2897,7 @@ function AdminOrders() {
                     <strong>UPI ID:</strong> {o.upiId}
                   </p>
                 )}
-                {o.deliveryAgent && (
-                  <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
-                    <strong>Delivery Agent:</strong> {o.deliveryAgent.name} ({o.deliveryAgent.email}) |{' '}
-                    <strong>Delivery Status:</strong> {o.deliveryStatus || 'Not assigned'}
-                  </p>
-                )}
+                
               </div>
             </div>
             <p style={{ marginBottom: '0.5rem' }}>
@@ -1888,217 +2914,19 @@ function AdminOrders() {
               <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Accept</button>
               <button onClick={() => updateStatus(o._id, 'Packed')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Pack</button>
               <button onClick={() => updateStatus(o._id, 'Delivered')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Deliver</button>
-              {(o.status === 'Accepted' || o.status === 'Packed') && !o.deliveryAgent && (
-                <button 
-                  onClick={() => setAssigningOrder(assigningOrder === o._id ? null : o._id)} 
-                  className="btn btn-primary" 
-                  style={{ fontSize: '0.9rem' }}
-                >
-                  {assigningOrder === o._id ? 'Cancel' : 'Assign Delivery'}
-                </button>
-              )}
+              
             </div>
-            {assigningOrder === o._id && (
-              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Select Delivery Agent:</label>
-                {deliveryAgents.length === 0 ? (
-                  <p style={{ color: '#6c757d' }}>No delivery agents available</p>
-                ) : (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {deliveryAgents.map((agent) => (
-                      <button
-                        key={agent._id}
-                        onClick={() => assignDeliveryAgent(o._id, agent._id)}
-                        className="btn btn-primary"
-                        style={{ fontSize: '0.9rem' }}
-                      >
-                        {agent.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            
             <small style={{ color: '#6c757d' }}>Created: {new Date(o.createdAt).toLocaleString()}</small>
           </div>
         ))}
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 
-function DeliveryOrders() {
-  const api = useApi()
-  const { token } = useAuth()
-  const [orders, setOrders] = useState([])
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [updatingOrder, setUpdatingOrder] = useState(null)
-
-  const load = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await api.get('/api/delivery/orders')
-      setOrders(data || [])
-    } catch (err) {
-      setError(err.message || 'Failed to load orders')
-      console.error('Error loading orders:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (token) {
-      load()
-    }
-  }, [token])
-
-  const updateDeliveryStatus = async (orderId, deliveryStatus) => {
-    setUpdatingOrder(orderId)
-    try {
-      await api.put(`/api/delivery/orders/${orderId}/status`, { deliveryStatus })
-      await load()
-      alert('Delivery status updated successfully!')
-    } catch (err) {
-      alert(err.message || 'Failed to update delivery status')
-    } finally {
-      setUpdatingOrder(null)
-    }
-  }
-
-  const getDeliveryStatusColor = (status) => {
-    const colors = {
-      Assigned: '#ffc107',
-      Picked: '#17a2b8',
-      Delivered: '#28a745',
-    }
-    return colors[status] || '#6c757d'
-  }
-
-  if (loading) return <div className="loading">Loading orders...</div>
-  if (error) return <div className="error">Error: {error}</div>
-
-  return (
-    <div>
-      <h3 style={{ marginBottom: '1.5rem' }}>My Delivery Orders</h3>
-      {orders.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-          <p style={{ color: '#6c757d' }}>No orders assigned to you yet.</p>
-        </div>
-      ) : (
-        orders.map((o) => (
-          <div key={o._id} className="card" style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: '0.25rem 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
-                  Order #{o._id.slice(-8)}
-                </p>
-                <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
-                  Created: {new Date(o.createdAt).toLocaleString()}
-                </p>
-                <p style={{ margin: '0.5rem 0', fontSize: '1.25rem', fontWeight: 'bold', color: '#28a745' }}>
-                  Total: ₹{o.totalAmount}
-                </p>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-                <span 
-                  className="badge"
-                  style={{
-                    backgroundColor: getDeliveryStatusColor(o.deliveryStatus),
-                    color: o.deliveryStatus === 'Assigned' ? '#000' : 'white'
-                  }}
-                >
-                  {o.deliveryStatus}
-                </span>
-                <span 
-                  className="badge"
-                  style={{
-                    backgroundColor: o.status === 'Pending' ? '#ffc107' : o.status === 'Accepted' ? '#17a2b8' : o.status === 'Packed' ? '#007bff' : '#28a745',
-                    color: o.status === 'Pending' ? '#000' : 'white',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  Order: {o.status}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
-              <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Customer Information</h4>
-              <p style={{ margin: '0.5rem 0' }}><strong>Name:</strong> {o.user?.name || 'N/A'}</p>
-              <p style={{ margin: '0.5rem 0' }}><strong>Email:</strong> {o.user?.email || 'N/A'}</p>
-              <p style={{ margin: '0.5rem 0' }}><strong>Phone:</strong> {o.user?.phoneNumber || 'N/A'}</p>
-              <p style={{ margin: '0.5rem 0' }}><strong>Address:</strong> {o.user?.address || 'N/A'}</p>
-              {o.user?.place && <p style={{ margin: '0.5rem 0' }}><strong>Place:</strong> {o.user?.place}</p>}
-              {o.user?.landmark && <p style={{ margin: '0.5rem 0' }}><strong>Landmark:</strong> {o.user?.landmark}</p>}
-              {o.user?.pincode && <p style={{ margin: '0.5rem 0' }}><strong>Pincode:</strong> {o.user?.pincode}</p>}
-            </div>
-
-            <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
-              <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Order Items & Farmer Information</h4>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                {o.items.map((item, idx) => {
-                  const farmer = item.product?.farmer
-                  return (
-                    <li key={idx} style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'white', borderRadius: '4px' }}>
-                      <div style={{ marginBottom: '0.5rem' }}>
-                        <strong>{item.product?.title || 'Product removed'}</strong>
-                        <span style={{ color: '#6c757d', marginLeft: '0.5rem' }}>
-                          • Qty: {item.quantity} × ₹{item.product?.price || 0} = ₹{(item.quantity * (item.product?.price || 0)).toFixed(2)}
-                        </span>
-                      </div>
-                      {farmer && (
-                        <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#e9ecef', borderRadius: '4px' }}>
-                          <p style={{ margin: '0.25rem 0', fontWeight: 'bold' }}>Farmer: {farmer.name}</p>
-                          <p style={{ margin: '0.25rem 0' }}><strong>Phone:</strong> {farmer.phoneNumber || 'N/A'}</p>
-                          <p style={{ margin: '0.25rem 0' }}><strong>Address:</strong> {farmer.address || 'N/A'}</p>
-                          {farmer.place && <p style={{ margin: '0.25rem 0' }}><strong>Place:</strong> {farmer.place}</p>}
-                          {farmer.landmark && <p style={{ margin: '0.25rem 0' }}><strong>Landmark:</strong> {farmer.landmark}</p>}
-                          {farmer.pincode && <p style={{ margin: '0.25rem 0' }}><strong>Pincode:</strong> {farmer.pincode}</p>}
-                        </div>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-
-            <div style={{ marginTop: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Update Delivery Status:</label>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {o.deliveryStatus === 'Assigned' && (
-                  <button
-                    onClick={() => updateDeliveryStatus(o._id, 'Picked')}
-                    className="btn btn-primary"
-                    disabled={updatingOrder === o._id}
-                    style={{ fontSize: '0.9rem' }}
-                  >
-                    {updatingOrder === o._id ? 'Updating...' : 'Mark as Picked'}
-                  </button>
-                )}
-                {o.deliveryStatus === 'Picked' && (
-                  <button
-                    onClick={() => updateDeliveryStatus(o._id, 'Delivered')}
-                    className="btn btn-primary"
-                    disabled={updatingOrder === o._id}
-                    style={{ fontSize: '0.9rem' }}
-                  >
-                    {updatingOrder === o._id ? 'Updating...' : 'Mark as Delivered'}
-                  </button>
-                )}
-                {o.deliveryStatus === 'Delivered' && (
-                  <span style={{ color: '#28a745', fontWeight: 'bold' }}>✓ Order Delivered</span>
-                )}
-              </div>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  )
-}
+ 
 
 function DashboardPage() {
   const { user, logout } = useAuth()
@@ -2106,54 +2934,45 @@ function DashboardPage() {
   return (
     <Protected>
       <div style={{ position: 'relative', minHeight: '100vh' }}>
-        {/* Header container with logout button aligned to bottom-left */}
-        <div className="card" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Dashboard</h2>
-          <p style={{ marginBottom: '1rem', color: '#6c757d' }}>
-            Logged in as <strong style={{ color: '#212529' }}>{user?.name}</strong> ({user?.role})
-          </p>
-          <button 
-            onClick={logout}
-            className="btn btn-danger"
-            style={{
-              marginTop: '0.5rem'
-            }}
-          >
-            Logout
-          </button>
-        </div>
-        <div className="card" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          {user?.role === 'customer' && (
-            <>
-              <Link to="/dashboard/customer/stats" className="nav-link">Dashboard</Link>
-              <Link to="/dashboard/customer/profile" className="nav-link">Profile</Link>
-              <Link to="/dashboard/customer/orders" className="nav-link">My Orders</Link>
-            </>
-          )}
-          {user?.role === 'farmer' && (
-            <>
-              <Link to="/dashboard/farmer/stats" className="nav-link">Dashboard</Link>
-              <Link to="/dashboard/farmer/profile" className="nav-link">Profile</Link>
-              <Link to="/dashboard/farmer/products" className="nav-link">My Products</Link>
-              <Link to="/dashboard/farmer/orders" className="nav-link">Orders</Link>
-            </>
-          )}
-          {user?.role === 'admin' && (
-            <>
-              <Link to="/dashboard/admin/stats" className="nav-link">Statistics</Link>
-              <Link to="/dashboard/admin/users" className="nav-link">Users</Link>
-              <Link to="/dashboard/admin/products" className="nav-link">Products</Link>
-              <Link to="/dashboard/admin/orders" className="nav-link">Orders</Link>
-            </>
-          )}
-          {user?.role === 'delivery' && (
-            <>
-              <Link to="/dashboard/delivery/orders" className="nav-link">My Orders</Link>
-            </>
-          )}
-          </div>
-        </div>
+        {/* Header and navigation - hidden for admin (they have sidebar) */}
+        {user?.role !== 'admin' && (
+          <>
+            <div className="card" style={{ marginBottom: '2rem' }}>
+              <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Dashboard</h2>
+              <p style={{ marginBottom: '1rem', color: '#6c757d' }}>
+                Logged in as <strong style={{ color: '#212529' }}>{user?.name}</strong> ({user?.role})
+              </p>
+              <button 
+                onClick={logout}
+                className="btn btn-danger"
+                style={{
+                  marginTop: '0.5rem'
+                }}
+              >
+                Logout
+              </button>
+            </div>
+            <div className="card" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {user?.role === 'customer' && (
+                  <>
+                    <Link to="/dashboard/customer/stats" className="nav-link">Dashboard</Link>
+                    <Link to="/dashboard/customer/profile" className="nav-link">Profile</Link>
+                    <Link to="/dashboard/customer/orders" className="nav-link">My Orders</Link>
+                  </>
+                )}
+                {user?.role === 'farmer' && (
+                  <>
+                    <Link to="/dashboard/farmer/stats" className="nav-link">Dashboard</Link>
+                    <Link to="/dashboard/farmer/profile" className="nav-link">Profile</Link>
+                    <Link to="/dashboard/farmer/products" className="nav-link">My Products</Link>
+                    <Link to="/dashboard/farmer/orders" className="nav-link">Orders</Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         <div style={{ marginTop: '1rem' }}>
           <Routes>
@@ -2164,8 +2983,6 @@ function DashboardPage() {
                   <Navigate to="/dashboard/farmer/stats" replace />
                 ) : user?.role === 'admin' ? (
                   <Navigate to="/dashboard/admin/stats" replace />
-                ) : user?.role === 'delivery' ? (
-                  <Navigate to="/dashboard/delivery/orders" replace />
                 ) : (
                   <Navigate to="/dashboard/customer/stats" replace />
                 )
@@ -2182,7 +2999,7 @@ function DashboardPage() {
             <Route path="admin/users" element={<AdminUsers />} />
             <Route path="admin/products" element={<AdminProducts />} />
             <Route path="admin/orders" element={<AdminOrders />} />
-            <Route path="delivery/orders" element={<DeliveryOrders />} />
+            
           </Routes>
         </div>
       </div>

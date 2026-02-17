@@ -88,7 +88,6 @@ router.get("/user", auth, allowRoles("customer"), async (req, res) => {
     }
     const orders = await Order.find(query)
       .populate("items.product")
-      .populate("deliveryAgent", "name email phoneNumber")
       .sort({ createdAt: -1 })
       .lean();
     return res.json(orders || []);
@@ -121,10 +120,16 @@ router.get("/subscribe/:orderId", async (req, res) => {
     const reqUser = decoded;
     const isOwner = order.user.toString() === reqUser.id;
     const isAdmin = reqUser.role === "admin";
-    const isDelivery = order.deliveryAgent && order.deliveryAgent.toString() === reqUser.id;
-    const isFarmer = reqUser.role === "farmer" && order.items.some(i => i.product && i.product.farmer && i.product.farmer.toString() === reqUser.id);
+    const isFarmer = reqUser.role === "farmer" && order.items.some((i) => {
+      if (!i.product || !i.product.farmer) return false;
+      // Handle both populated object (with _id) and ObjectId reference
+      const farmerId = i.product.farmer._id 
+        ? i.product.farmer._id.toString() 
+        : i.product.farmer.toString();
+      return farmerId === reqUser.id;
+    });
 
-    if (!isOwner && !isAdmin && !isDelivery && !isFarmer) {
+    if (!isOwner && !isAdmin && !isFarmer) {
       return res.status(403).json({ message: "Not authorized to subscribe to this order" });
     }
 
@@ -138,7 +143,7 @@ router.get("/subscribe/:orderId", async (req, res) => {
     };
 
     // initial state
-    send({ orderId, status: order.status, deliveryStatus: order.deliveryStatus });
+    send({ orderId, status: order.status });
 
     const handler = (payload) => {
       send({ orderId, ...payload });
@@ -172,7 +177,6 @@ router.get("/farmer", auth, allowRoles("farmer", "admin"), async (req, res) => {
           populate: { path: "farmer", select: "name email role" },
         })
         .populate("user", "name email")
-        .populate("deliveryAgent", "name email phoneNumber")
         .sort({ createdAt: -1 })
         .lean();
       return res.json(orders || []);
@@ -197,7 +201,6 @@ router.get("/farmer", auth, allowRoles("farmer", "admin"), async (req, res) => {
         populate: { path: "farmer", select: "name email role" },
       })
       .populate("user", "name email")
-      .populate("deliveryAgent", "name email phoneNumber")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -226,11 +229,16 @@ router.put("/:id/status", auth, allowRoles("farmer", "admin"), async (req, res) 
     }
 
     const isAdmin = req.user.role === "admin";
-    const ownsAllItems = order.items.every(
-      (i) => i.product && i.product.farmer?.toString() === req.user.id
-    );
+    const ownsAtLeastOneItem = order.items.some((i) => {
+      if (!i.product || !i.product.farmer) return false;
+      // Handle both populated object (with _id) and ObjectId reference
+      const farmerId = i.product.farmer._id 
+        ? i.product.farmer._id.toString() 
+        : i.product.farmer.toString();
+      return farmerId === req.user.id;
+    });
 
-    if (!isAdmin && !ownsAllItems) {
+    if (!isAdmin && !ownsAtLeastOneItem) {
       return res.status(403).json({ message: "Not allowed to update this order" });
     }
 

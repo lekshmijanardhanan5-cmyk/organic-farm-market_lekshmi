@@ -20,6 +20,12 @@ router.post("/register", async (req, res) => {
     return res.status(400).json({ message: "Name, email, and password required" });
   }
 
+  // Validate role against allowed roles
+  const allowedRoles = ["admin", "farmer", "customer"];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ message: "Invalid role" });
+  }
+
   try {
     const existing = await User.findOne({ email });
     if (existing) {

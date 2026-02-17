@@ -71,7 +71,6 @@ function RegisterPage() {
             <select value={role} onChange={(e) => setRole(e.target.value)} className="select" style={{ width: '100%' }}>
               <option value="customer">Customer</option>
               <option value="farmer">Farmer</option>
-              <option value="delivery">Delivery Agent</option>
               <option value="admin">Admin (for demo)</option>
             </select>
           </div>
