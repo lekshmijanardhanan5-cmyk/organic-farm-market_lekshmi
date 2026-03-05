@@ -34,7 +34,7 @@ function RegisterPage() {
   return (
     <div style={{ maxWidth: 450, margin: '3rem auto' }}>
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: '2rem', textAlign: 'center', color: '#28a745' }}>Register</h2>
+        <h2 style={{ marginTop: 0, marginBottom: '2rem', textAlign: 'center', color: '#1b4332' }}>Register</h2>
         {error && <div className="error">{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
@@ -79,7 +79,7 @@ function RegisterPage() {
           </button>
         </form>
         <p style={{ marginTop: '2rem', textAlign: 'center', color: '#6c757d', fontSize: '0.95rem' }}>
-          Already have an account? <Link to="/login" style={{ color: '#28a745', fontWeight: 500, textDecoration: 'none' }}>Login here</Link>
+          Already have an account? <Link to="/login" style={{ color: '#c9a84c', fontWeight: 600, textDecoration: 'none' }}>Login here</Link>
         </p>
       </div>
     </div>

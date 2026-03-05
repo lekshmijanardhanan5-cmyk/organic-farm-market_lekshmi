@@ -150,7 +150,7 @@ function CustomerProfile() {
             maxLength={10}
             style={{ width: '100%', padding: '0.75rem' }}
           />
-          {errors.phoneNumber && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.phoneNumber}</span>}
+          {errors.phoneNumber && <span style={{ color: '#9b2c2c', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.phoneNumber}</span>}
         </div>
 
         {/* Address */}
@@ -180,7 +180,7 @@ function CustomerProfile() {
             required
             style={{ width: '100%', padding: '0.75rem' }}
           />
-          {errors.email && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.email}</span>}
+          {errors.email && <span style={{ color: '#9b2c2c', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.email}</span>}
         </div>
 
         {/* Place */}
@@ -223,7 +223,7 @@ function CustomerProfile() {
             maxLength={6}
             style={{ width: '100%', padding: '0.75rem' }}
           />
-          {errors.pincode && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.pincode}</span>}
+          {errors.pincode && <span style={{ color: '#9b2c2c', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.pincode}</span>}
         </div>
 
         {/* Update Profile Button */}
@@ -291,7 +291,7 @@ function CustomerStats() {
         </div>
         <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
           <strong>Total Spent</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: 'green' }}>₹{stats.totalSpent}</p>
+          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: '#1b4332' }}>₹{stats.totalSpent}</p>
         </div>
       </div>
       {stats.orders.byStatus && Object.keys(stats.orders.byStatus).length > 0 && (
@@ -435,10 +435,10 @@ function CustomerOrders() {
 
   const getStatusColor = (status) => {
     const colors = {
-      Pending: '#ffc107',
-      Accepted: '#17a2b8',
-      Packed: '#007bff',
-      Delivered: '#28a745',
+      Pending: '#c9a84c',
+      Accepted: '#2d6a4f',
+      Packed: '#1b4332',
+      Delivered: '#1b4332',
     }
     return colors[status] || '#6c757d'
   }
@@ -484,7 +484,7 @@ function CustomerOrders() {
                   <p style={{ margin: '0.25rem 0', color: '#6c757d', fontSize: '0.9rem' }}>
                     Order #{o._id.slice(-8)} • {new Date(o.createdAt).toLocaleDateString()}
                   </p>
-                  <p style={{ margin: '0.5rem 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>
+                  <p style={{ margin: '0.5rem 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#1b4332' }}>
                     ₹{o.totalAmount}
                   </p>
                   {o.paymentMethod && (
@@ -524,7 +524,7 @@ function CustomerOrders() {
                 {expandedOrder === o._id ? '▼ Hide Details' : '▶ Show Details'}
               </button>
               {expandedOrder === o._id && (
-                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#faf8f4', borderRadius: '6px' }}>
                   <strong style={{ display: 'block', marginBottom: '0.75rem' }}>Order Items:</strong>
                   <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'none' }}>
                     {o.items.map((item, idx) => {
@@ -549,14 +549,14 @@ function CustomerOrders() {
                             {isDelivered && productId && (
                               <div style={{ marginLeft: '1rem' }}>
                                 {hasReviewed ? (
-                                  <span style={{ color: '#28a745', fontSize: '0.9rem' }}>✓ Reviewed</span>
+                                  <span style={{ color: '#1b4332', fontSize: '0.9rem' }}>✓ Reviewed</span>
                                 ) : reviewInfo ? (
                                   canReview ? (
                                     <button
                                       onClick={() => setReviewingProduct(reviewingProduct === productId ? null : productId)}
                                       className="btn"
                                       style={{ 
-                                        backgroundColor: '#28a745', 
+                                        backgroundColor: '#1b4332', 
                                         color: 'white', 
                                         fontSize: '0.85rem', 
                                         padding: '0.4rem 0.8rem' 
@@ -595,7 +595,7 @@ function CustomerOrders() {
                                   alert(err.message || 'Failed to submit review')
                                 }
                               }}
-                              style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}
+                              style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#faf8f4', borderRadius: '4px' }}
                             >
                               <div style={{ marginBottom: '0.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Rating: </label>
@@ -627,7 +627,7 @@ function CustomerOrders() {
                                 <button
                                   type="submit"
                                   className="btn"
-                                  style={{ backgroundColor: '#28a745', color: 'white' }}
+                                  style={{ backgroundColor: '#1b4332', color: 'white' }}
                                 >
                                   Submit Review
                                 </button>
@@ -796,7 +796,7 @@ function FarmerProfile() {
           <span
             className="badge"
             style={{
-              backgroundColor: user?.isApproved ? '#28a745' : '#ffc107',
+              backgroundColor: user?.isApproved ? '#1b4332' : '#c9a84c',
               color: user?.isApproved ? 'white' : '#000',
               padding: '0.5rem 1rem',
               borderRadius: '4px',
@@ -811,7 +811,7 @@ function FarmerProfile() {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: 700 }}>
         {/* Personal Info Section */}
         <div>
-          <h4 style={{ margin: '0 0 1.5rem 0', color: '#28a745', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #28a745' }}>
+          <h4 style={{ margin: '0 0 1.5rem 0', color: '#1b4332', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #1b4332' }}>
             Personal Info
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -842,14 +842,14 @@ function FarmerProfile() {
                 maxLength={10}
                 style={{ width: '100%', padding: '0.75rem' }}
               />
-              {errors.phoneNumber && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.phoneNumber}</span>}
+              {errors.phoneNumber && <span style={{ color: '#9b2c2c', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.phoneNumber}</span>}
             </div>
           </div>
         </div>
 
         {/* Farm Info Section */}
         <div>
-          <h4 style={{ margin: '0 0 1.5rem 0', color: '#28a745', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #28a745' }}>
+          <h4 style={{ margin: '0 0 1.5rem 0', color: '#1b4332', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #1b4332' }}>
             Farm Info
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -866,7 +866,7 @@ function FarmerProfile() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Product Types</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #dee2e6' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', padding: '1rem', backgroundColor: '#faf8f4', borderRadius: '4px', border: '1px solid #dee2e6' }}>
                 {productTypeOptions.map((type) => (
                   <label
                     key={type}
@@ -875,9 +875,9 @@ function FarmerProfile() {
                       alignItems: 'center',
                       cursor: 'pointer',
                       padding: '0.5rem 1rem',
-                      backgroundColor: form.productTypes.includes(type) ? '#28a745' : 'white',
+                      backgroundColor: form.productTypes.includes(type) ? '#1b4332' : 'white',
                       color: form.productTypes.includes(type) ? 'white' : '#333',
-                      border: `1px solid ${form.productTypes.includes(type) ? '#28a745' : '#dee2e6'}`,
+                      border: `1px solid ${form.productTypes.includes(type) ? '#1b4332' : '#dee2e6'}`,
                       borderRadius: '4px',
                       fontSize: '0.9rem',
                       transition: 'all 0.2s'
@@ -909,14 +909,14 @@ function FarmerProfile() {
                 min="0"
                 style={{ width: '100%', padding: '0.75rem' }}
               />
-              {errors.yearsOfExperience && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.yearsOfExperience}</span>}
+              {errors.yearsOfExperience && <span style={{ color: '#9b2c2c', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.yearsOfExperience}</span>}
             </div>
           </div>
         </div>
 
         {/* Contact Info Section */}
         <div>
-          <h4 style={{ margin: '0 0 1.5rem 0', color: '#28a745', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #28a745' }}>
+          <h4 style={{ margin: '0 0 1.5rem 0', color: '#1b4332', fontSize: '1.1rem', fontWeight: 600, paddingBottom: '0.5rem', borderBottom: '2px solid #1b4332' }}>
             Contact Info
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -968,7 +968,7 @@ function FarmerProfile() {
                 maxLength={6}
                 style={{ width: '100%', padding: '0.75rem' }}
               />
-              {errors.pincode && <span style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.pincode}</span>}
+              {errors.pincode && <span style={{ color: '#9b2c2c', fontSize: '0.85rem', marginTop: '-0.25rem' }}>{errors.pincode}</span>}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -991,11 +991,11 @@ function FarmerProfile() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>Account Status</label>
-              <div style={{ padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #dee2e6' }}>
+              <div style={{ padding: '0.75rem', backgroundColor: '#faf8f4', borderRadius: '4px', border: '1px solid #dee2e6' }}>
                 <span
                   className="badge"
                   style={{
-                    backgroundColor: user?.isApproved ? '#28a745' : '#ffc107',
+                    backgroundColor: user?.isApproved ? '#1b4332' : '#c9a84c',
                     color: user?.isApproved ? 'white' : '#000',
                     padding: '0.5rem 1rem',
                     borderRadius: '4px',
@@ -1220,7 +1220,7 @@ function FarmerProducts() {
                 transition: 'all 0.2s',
                 outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onFocus={(e) => e.target.style.borderColor = '#1b4332'}
               onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
@@ -1252,7 +1252,7 @@ function FarmerProducts() {
                 transition: 'all 0.2s',
                 outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onFocus={(e) => e.target.style.borderColor = '#1b4332'}
               onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
@@ -1280,7 +1280,7 @@ function FarmerProducts() {
                 transition: 'all 0.2s',
                 outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onFocus={(e) => e.target.style.borderColor = '#1b4332'}
               onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
@@ -1308,7 +1308,7 @@ function FarmerProducts() {
                 transition: 'all 0.2s',
                 outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onFocus={(e) => e.target.style.borderColor = '#1b4332'}
               onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
@@ -1339,7 +1339,7 @@ function FarmerProducts() {
                 transition: 'all 0.2s',
                 outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onFocus={(e) => e.target.style.borderColor = '#1b4332'}
               onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
@@ -1371,7 +1371,7 @@ function FarmerProducts() {
               type="submit"
               style={{
                 padding: '0.75rem 1.5rem',
-                backgroundColor: '#3b82f6',
+                backgroundColor: '#1b4332',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
@@ -1381,8 +1381,8 @@ function FarmerProducts() {
                 transition: 'all 0.2s',
                 flex: '0 0 auto'
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#2d6a4f'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#1b4332'}
             >
               {editing ? 'Update Product' : 'Add Product'}
             </button>
@@ -1423,8 +1423,8 @@ function FarmerProducts() {
           </h3>
           <span style={{
             padding: '0.375rem 0.875rem',
-            backgroundColor: '#eff6ff',
-            color: '#1e40af',
+            backgroundColor: '#f0fdf4',
+            color: '#14532d',
             borderRadius: '9999px',
             fontSize: '0.875rem',
             fontWeight: '500'
@@ -1543,8 +1543,8 @@ function FarmerProducts() {
                     <span style={{
                       display: 'inline-block',
                       padding: '0.25rem 0.625rem',
-                      backgroundColor: '#eff6ff',
-                      color: '#1e40af',
+                      backgroundColor: '#f0fdf4',
+                      color: '#14532d',
                       borderRadius: '6px',
                       fontSize: '0.75rem',
                       fontWeight: '500',
@@ -1558,7 +1558,7 @@ function FarmerProducts() {
                   <div style={{
                     fontSize: '1.5rem',
                     fontWeight: '700',
-                    color: '#059669',
+                    color: '#1b4332',
                     marginBottom: '0.75rem'
                   }}>
                     ₹{Number(p.price).toFixed(2)}
@@ -1593,8 +1593,8 @@ function FarmerProducts() {
                         flex: 1,
                         padding: '0.625rem 1rem',
                         backgroundColor: '#ffffff',
-                        color: '#3b82f6',
-                        border: '1px solid #3b82f6',
+                        color: '#1b4332',
+                        border: '1px solid #1b4332',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
                         fontWeight: '500',
@@ -1602,12 +1602,12 @@ function FarmerProducts() {
                         transition: 'all 0.2s'
                       }}
                       onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#eff6ff';
-                        e.target.style.borderColor = '#2563eb';
+                        e.target.style.backgroundColor = '#f0fdf4';
+                        e.target.style.borderColor = '#2d6a4f';
                       }}
                       onMouseLeave={(e) => {
                         e.target.style.backgroundColor = '#ffffff';
-                        e.target.style.borderColor = '#3b82f6';
+                        e.target.style.borderColor = '#1b4332';
                       }}
                     >
                       Edit
@@ -1618,8 +1618,8 @@ function FarmerProducts() {
                         flex: 1,
                         padding: '0.625rem 1rem',
                         backgroundColor: '#ffffff',
-                        color: '#dc2626',
-                        border: '1px solid #dc2626',
+                        color: '#9b2c2c',
+                        border: '1px solid #9b2c2c',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
                         fontWeight: '500',
@@ -1628,11 +1628,11 @@ function FarmerProducts() {
                       }}
                       onMouseEnter={(e) => {
                         e.target.style.backgroundColor = '#fee2e2';
-                        e.target.style.borderColor = '#b91c1c';
+                        e.target.style.borderColor = '#822727';
                       }}
                       onMouseLeave={(e) => {
                         e.target.style.backgroundColor = '#ffffff';
-                        e.target.style.borderColor = '#dc2626';
+                        e.target.style.borderColor = '#9b2c2c';
                       }}
                     >
                       Delete
@@ -1682,7 +1682,7 @@ function FarmerStats() {
         </div>
         <div style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '4px' }}>
           <strong>Total Revenue</strong>
-          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: 'green' }}>₹{stats.revenue}</p>
+          <p style={{ fontSize: '1.5rem', margin: '0.5rem 0', color: '#1b4332' }}>₹{stats.revenue}</p>
         </div>
       </div>
       {stats.orders.byStatus && Object.keys(stats.orders.byStatus).length > 0 && (
@@ -1783,10 +1783,10 @@ function FarmerOrders() {
 
   const getStatusColor = (status) => {
     const colors = {
-      Pending: '#ffc107',
-      Accepted: '#17a2b8',
-      Packed: '#007bff',
-      Delivered: '#28a745',
+      Pending: '#c9a84c',
+      Accepted: '#2d6a4f',
+      Packed: '#1b4332',
+      Delivered: '#1b4332',
     }
     return colors[status] || '#6c757d'
   }
@@ -1831,14 +1831,14 @@ function FarmerOrders() {
                       Order #{o._id.slice(-8)} • {new Date(o.createdAt).toLocaleDateString()}
                     </p>
                     <p style={{ margin: '0.5rem 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
-                      Customer: <span style={{ color: '#28a745' }}>{o.user?.name || 'Unknown'}</span>
+                      Customer: <span style={{ color: '#1b4332' }}>{o.user?.name || 'Unknown'}</span>
                       {o.user?.email && (
                         <span style={{ color: '#6c757d', fontSize: '0.9rem', marginLeft: '0.5rem' }}>
                           ({o.user.email})
                         </span>
                       )}
                     </p>
-                    <p style={{ margin: '0.5rem 0', fontSize: '1.25rem', fontWeight: 'bold', color: '#28a745' }}>
+                    <p style={{ margin: '0.5rem 0', fontSize: '1.25rem', fontWeight: 'bold', color: '#1b4332' }}>
                       My Products Subtotal: ₹{farmerSubtotal.toFixed(2)}
                     </p>
                     {o.paymentMethod && (
@@ -1859,7 +1859,7 @@ function FarmerOrders() {
                     {o.status}
                   </span>
                 </div>
-                <div style={{ marginTop: '0.5rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '1rem' }}>
+                <div style={{ marginTop: '0.5rem', padding: '1rem', backgroundColor: '#faf8f4', borderRadius: '6px', marginBottom: '1rem' }}>
                   <strong style={{ display: 'block', marginBottom: '0.75rem', fontSize: '1.1rem' }}>My Products in This Order:</strong>
                   <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'none' }}>
                     {farmerItems.map((item, idx) => (
@@ -1872,7 +1872,7 @@ function FarmerOrders() {
                             <div style={{ color: '#6c757d', fontSize: '0.9rem' }}>
                               <span>Quantity: <strong>{item.quantity}</strong></span>
                               <span style={{ marginLeft: '1rem' }}>Price: ₹<strong>{item.product?.price || 0}</strong> per unit</span>
-                              <span style={{ marginLeft: '1rem', color: '#28a745', fontWeight: 'bold' }}>
+                              <span style={{ marginLeft: '1rem', color: '#1b4332', fontWeight: 'bold' }}>
                                 Subtotal: ₹{(item.quantity * (item.product?.price || 0)).toFixed(2)}
                               </span>
                             </div>
@@ -1884,12 +1884,12 @@ function FarmerOrders() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
                   {o.status === 'Pending' && (
-                    <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn" style={{ backgroundColor: '#17a2b8', color: 'white' }}>
+                    <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn" style={{ backgroundColor: '#2d6a4f', color: 'white' }}>
                       Accept Order
                     </button>
                   )}
                   {(o.status === 'Pending' || o.status === 'Accepted') && (
-                    <button onClick={() => updateStatus(o._id, 'Packed')} className="btn" style={{ backgroundColor: '#007bff', color: 'white' }}>
+                    <button onClick={() => updateStatus(o._id, 'Packed')} className="btn" style={{ backgroundColor: '#1b4332', color: 'white' }}>
                       Mark as Packed
                     </button>
                   )}
@@ -2020,12 +2020,12 @@ function AdminLayout({ children, pageTitle }) {
                 margin: '0.25rem 0.75rem',
                 borderRadius: '8px',
                 textDecoration: 'none',
-                color: isActive(item.path) ? '#3b82f6' : '#6b7280',
-                backgroundColor: isActive(item.path) ? '#eff6ff' : 'transparent',
+                color: isActive(item.path) ? '#1b4332' : '#6b7280',
+                backgroundColor: isActive(item.path) ? '#f0fdf4' : 'transparent',
                 fontWeight: isActive(item.path) ? '600' : '500',
                 fontSize: '0.9375rem',
                 transition: 'all 0.2s',
-                border: isActive(item.path) ? '1px solid #dbeafe' : '1px solid transparent'
+                border: isActive(item.path) ? '1px solid #bbf7d0' : '1px solid transparent'
               }}
               onMouseEnter={(e) => {
                 if (!isActive(item.path)) {
@@ -2098,7 +2098,7 @@ function AdminLayout({ children, pageTitle }) {
               onClick={logout}
               style={{
                 padding: '0.5rem 1rem',
-                backgroundColor: '#dc2626',
+                backgroundColor: '#9b2c2c',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '6px',
@@ -2107,8 +2107,8 @@ function AdminLayout({ children, pageTitle }) {
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#b91c1c'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = '#dc2626'}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#822727'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#9b2c2c'}
             >
               Logout
             </button>
@@ -2226,8 +2226,8 @@ function AdminStats() {
       title: 'Total Users',
       value: stats.users.total,
       icon: '👥',
-      color: '#2563eb', // Blue
-      bgColor: '#eff6ff',
+      color: '#2d6a4f', // Blue
+      bgColor: '#f0fdf4',
       borderColor: '#bfdbfe',
       label: `Farmers: ${stats.users.farmers} • Customers: ${stats.users.customers}`,
       onClick: () => window.location.href = '/dashboard/admin/users'
@@ -2236,8 +2236,8 @@ function AdminStats() {
       title: 'Total Orders',
       value: stats.orders.total,
       icon: '🛒',
-      color: '#2563eb', // Blue
-      bgColor: '#eff6ff',
+      color: '#2d6a4f', // Blue
+      bgColor: '#f0fdf4',
       borderColor: '#bfdbfe',
       onClick: () => window.location.href = '/dashboard/admin/orders'
     },
@@ -2245,7 +2245,7 @@ function AdminStats() {
       title: 'Total Revenue',
       value: `₹${Number(stats.revenue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: '💰',
-      color: '#16a34a', // Green
+      color: '#1b4332', // Green
       bgColor: '#dcfce7',
       borderColor: '#bbf7d0',
       onClick: () => window.location.href = '/dashboard/admin/orders'
@@ -2254,8 +2254,8 @@ function AdminStats() {
       title: 'Total Products',
       value: stats.products.total,
       icon: '📦',
-      color: '#2563eb', // Blue (can be changed if needed)
-      bgColor: '#eff6ff',
+      color: '#2d6a4f', // Blue (can be changed if needed)
+      bgColor: '#f0fdf4',
       borderColor: '#bfdbfe',
       onClick: () => window.location.href = '/dashboard/admin/products'
     },
@@ -2273,7 +2273,7 @@ function AdminStats() {
       title: 'Blocked Users',
       value: stats.users.blockedUsers,
       icon: '🚫',
-      color: '#dc2626', // Red
+      color: '#9b2c2c', // Red
       bgColor: '#fee2e2',
       borderColor: '#fecaca',
       isCritical: stats.users.blockedUsers > 0,

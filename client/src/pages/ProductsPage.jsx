@@ -103,7 +103,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
             style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: '4px', marginBottom: '0.5rem', cursor: 'pointer' }}
           />
         )}
-        <h3 style={{ margin: '0.5rem 0', cursor: 'pointer', color: '#28a745' }}>{product.title}</h3>
+        <h3 style={{ margin: '0.5rem 0', cursor: 'pointer', color: '#1b4332' }}>{product.title}</h3>
       </Link>
       {avgRating && (
         <div style={{ marginBottom: '0.5rem' }}>
@@ -114,7 +114,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
       <p style={{ color: '#666', margin: '0.5rem 0' }}>{product.description}</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
         <div>
-          <p style={{ margin: '0.25rem 0', fontSize: '1.2rem', fontWeight: 'bold', color: '#28a745' }}>
+          <p style={{ margin: '0.25rem 0', fontSize: '1.2rem', fontWeight: 'bold', color: '#1b4332' }}>
             ₹{product.price}
           </p>
           <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
@@ -176,7 +176,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
                     style={{ padding: '0.5rem' }}
                   />
                   {selectedUpi && !/^[^\s@]+@[^\s@]+$/.test(selectedUpi) && (
-                    <small style={{ color: '#dc3545' }}>Enter a valid UPI ID (e.g., name@upi)</small>
+                    <small style={{ color: '#9b2c2c' }}>Enter a valid UPI ID (e.g., name@upi)</small>
                   )}
                 </div>
               )}
@@ -225,14 +225,14 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
       <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '0.5rem' }}>
         <button
           onClick={() => setShowReviews(!showReviews)}
-          style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
+          style={{ background: 'none', border: 'none', color: '#1b4332', cursor: 'pointer', textDecoration: 'underline', fontWeight: 500 }}
         >
           {showReviews ? 'Hide Reviews' : `View Reviews (${reviews.length})`}
         </button>
         {user?.role === 'customer' && canReview && (
           <button
             onClick={() => setShowReviewForm(!showReviewForm)}
-            style={{ marginLeft: '1rem', background: 'none', border: 'none', color: '#28a745', cursor: 'pointer', textDecoration: 'underline' }}
+            style={{ marginLeft: '1rem', background: 'none', border: 'none', color: '#1b4332', cursor: 'pointer', textDecoration: 'underline' }}
           >
             {showReviewForm ? 'Cancel Review' : 'Write Review'}
           </button>
@@ -244,7 +244,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
         )}
       </div>
       {showReviewForm && user?.role === 'customer' && (
-        <form onSubmit={handleReviewSubmit} style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+        <form onSubmit={handleReviewSubmit} style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: '#faf8f4', borderRadius: '4px' }}>
           <div style={{ marginBottom: '0.5rem' }}>
             <label>Rating: </label>
             <select
@@ -265,7 +265,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
             onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
             style={{ width: '100%', minHeight: 60, padding: '0.25rem', marginBottom: '0.5rem' }}
           />
-          <button type="submit" style={{ padding: '0.25rem 0.5rem', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          <button type="submit" style={{ padding: '0.25rem 0.5rem', backgroundColor: '#1b4332', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
             Submit Review
           </button>
         </form>
@@ -278,7 +278,7 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
             <p style={{ color: '#666', fontSize: '0.9rem' }}>No reviews yet. Be the first to review!</p>
           ) : (
             reviews.map((r) => (
-              <div key={r._id} style={{ marginBottom: '0.5rem', padding: '0.5rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+              <div key={r._id} style={{ marginBottom: '0.5rem', padding: '0.5rem', backgroundColor: '#faf8f4', borderRadius: '4px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                   <div>
                     <strong>{r.user?.name || 'Anonymous'}</strong>
@@ -293,6 +293,162 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
         </div>
       )}
     </div>
+  )
+}
+
+function HeroSection() {
+  const navigate = useNavigate()
+  return (
+    <section style={{ marginBottom: '3rem' }}>
+      {/* Hero Text Area */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1.2fr 1fr',
+        gap: '0',
+        backgroundColor: '#f0ede6',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        marginBottom: '0'
+      }}>
+        {/* Left: Heading */}
+        <div style={{
+          padding: '3.5rem 3rem 2.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          borderRight: '1px solid #e0dcd4'
+        }}>
+          <h1 style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: 'clamp(2.5rem, 5vw, 3.8rem)',
+            fontWeight: 700,
+            color: '#1b4332',
+            lineHeight: 1.1,
+            margin: '0 0 2rem 0'
+          }}>
+            Grow <em style={{ fontStyle: 'italic' }}>Smarter</em><br />
+            Harvest <em style={{ fontStyle: 'italic' }}>Better</em>
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', color: '#6b7280', fontSize: '0.9rem' }}>
+            <span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Est. 2024</span>
+            <span style={{ width: '1px', height: '20px', backgroundColor: '#c9a84c' }} />
+            <span style={{ fontWeight: 500 }}>Supported 500+ Farmers</span>
+          </div>
+        </div>
+
+        {/* Right: Description + CTA */}
+        <div style={{
+          padding: '3.5rem 3rem 2.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: '1.5rem'
+        }}>
+          <p style={{
+            fontSize: '1rem',
+            color: '#4a4a4a',
+            lineHeight: 1.7,
+            margin: 0
+          }}>
+            Embrace fresh organic produce, connect directly with local farmers,
+            and experience transparent pricing for a healthier, sustainable lifestyle.
+          </p>
+          <div>
+            <button
+              onClick={() => {
+                document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.85rem 2rem',
+                backgroundColor: '#1b4332',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.25s',
+                letterSpacing: '0.02em'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2d6a4f'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#1b4332'; e.currentTarget.style.transform = 'translateY(0)' }}
+            >
+              <span style={{ fontSize: '0.8rem' }}>●</span> Buy Products Now
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Hero Image */}
+      <div style={{
+        position: 'relative',
+        borderRadius: '0 0 12px 12px',
+        overflow: 'hidden',
+        marginTop: '-1px'
+      }}>
+        <img
+          src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1400&h=500&fit=crop&crop=center"
+          alt="Lush green farmland with rows of crops stretching into the distance"
+          style={{
+            width: '100%',
+            height: '420px',
+            objectFit: 'cover',
+            display: 'block'
+          }}
+        />
+        {/* Inset card image */}
+        <div style={{
+          position: 'absolute',
+          bottom: '1.5rem',
+          right: '1.5rem',
+          width: '220px',
+          height: '160px',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          border: '3px solid rgba(255,255,255,0.6)'
+        }}>
+          <img
+            src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400&h=300&fit=crop"
+            alt="Modern farming technology with tablet in field"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </div>
+        {/* Gradient overlay at bottom */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '120px',
+          background: 'linear-gradient(transparent, rgba(27,67,50,0.15))',
+          pointerEvents: 'none'
+        }} />
+      </div>
+
+      {/* Responsive override for mobile */}
+      <style>{`
+        @media (max-width: 768px) {
+          section > div:first-child {
+            grid-template-columns: 1fr !important;
+          }
+          section > div:first-child > div:first-child {
+            border-right: none !important;
+            border-bottom: 1px solid #e0dcd4;
+            padding: 2rem 1.5rem 1.5rem !important;
+          }
+          section > div:first-child > div:last-child {
+            padding: 1.5rem !important;
+          }
+          section > div:nth-child(2) img:first-child {
+            height: 260px !important;
+          }
+        }
+      `}</style>
+    </section>
   )
 }
 
@@ -350,8 +506,10 @@ function ProductsPage() {
 
   return (
     <div>
-      <div className="card" style={{ marginBottom: '2rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#28a745' }}>🌱 Organic Products</h2>
+      <HeroSection />
+
+      <div id="products-section" className="card" style={{ marginBottom: '2rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#1b4332' }}>Organic Products</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             type="text"

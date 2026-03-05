@@ -1,0 +1,178 @@
+DATABASE SCHEMA DOCUMENTATION
+Organic Farm Market System
+==========================================
+
+This document contains the complete database schema for all collections (tables) used in the Organic Farm Market system.
+
+================================================================================
+1. USER COLLECTION
+================================================================================
+
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+_id                 | ObjectId               | Primary Key, Auto-generated    | Yes      | Unique identifier for the user record
+name                | String                 | trim: true                     | Yes      | Full name of the user
+email               | String                 | unique: true, lowercase: true,  | Yes      | User's email address (unique identifier)
+                                                    trim: true
+phoneNumber         | String                 | trim: true, default: ""        | No       | Contact phone number
+address             | String                 | trim: true, default: ""        | No       | Street address
+place               | String                 | trim: true, default: ""        | No       | City/town name
+landmark            | String                 | trim: true, default: ""        | No       | Nearby landmark for delivery
+pincode             | String                 | trim: true, default: ""        | No       | Postal code (6 digits)
+farmName            | String                 | trim: true, default: ""        | No       | Name of the farm (for farmers)
+productTypes        | Array of Strings       | default: []                    | No       | Types of products the farmer produces
+yearsOfExperience   | Number                 | default: 0                     | No       | Years of farming experience
+password            | String                 | Hashed (bcrypt)                | Yes      | Encrypted password for authentication
+role                | String                 | enum: ["admin", "farmer",       | No       | User role in the system
+                                                    "customer"], default: "customer"
+isApproved          | Boolean                | default: true (admin/customer), | No       | Approval status (farmers need admin approval)
+                                                    false (farmer)
+isBlocked           | Boolean                | default: false                 | No       | Account blocking status
+createdAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record creation timestamp
+updatedAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record last update timestamp
+
+
+================================================================================
+2. PRODUCT COLLECTION
+================================================================================
+
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+_id                 | ObjectId               | Primary Key, Auto-generated    | Yes      | Unique identifier for the product record
+title               | String                 | trim: true                     | Yes      | Product name/title
+description         | String                 | trim: true                     | No       | Detailed product description
+price               | Number                 | -                              | Yes      | Product price per unit
+category            | String                 | trim: true                     | No       | Product category/type
+imageUrl            | String                 | trim: true                     | No       | URL/path to product image
+farmer              | ObjectId               | ref: "User"                    | Yes      | Reference to the User (farmer) who owns this product
+isAvailable         | Boolean                | default: true                  | No       | Product availability status
+createdAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record creation timestamp
+updatedAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record last update timestamp
+
+
+================================================================================
+3. ORDER COLLECTION
+================================================================================
+
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+_id                 | ObjectId               | Primary Key, Auto-generated    | Yes      | Unique identifier for the order record
+user                | ObjectId               | ref: "User"                    | Yes      | Reference to the User (customer) who placed the order
+items               | Array of Objects       | -                              | Yes      | Array of order items (see OrderItem sub-schema below)
+totalAmount         | Number                 | -                              | Yes      | Total order amount
+status              | String                 | enum: ["Pending", "Accepted",   | No       | Current order status
+                                                    "Packed", "Delivered"],
+                                                    default: "Pending"
+paymentMethod       | String                 | enum: ["COD", "UPI"],           | No       | Payment method selected by customer
+                                                    default: "COD"
+upiId               | String                 | Conditional: required if       | No       | UPI ID for UPI payments
+                                                    paymentMethod === "UPI"
+paymentStatus       | String                 | enum: ["Pending", "Paid",       | No       | Payment processing status
+                                                    "Failed"],
+                                                    default: "Pending"
+createdAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record creation timestamp
+updatedAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record last update timestamp
+
+--- OrderItem Sub-Schema (embedded in items array) ---
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+product             | ObjectId               | ref: "Product"                 | Yes      | Reference to the Product being ordered
+quantity            | Number                 | min: 1                         | Yes      | Quantity of the product ordered
+
+
+================================================================================
+4. REVIEW COLLECTION
+================================================================================
+
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+_id                 | ObjectId               | Primary Key, Auto-generated    | Yes      | Unique identifier for the review record
+product             | ObjectId               | ref: "Product"                 | Yes      | Reference to the Product being reviewed
+user                | ObjectId               | ref: "User"                    | Yes      | Reference to the User (customer) who wrote the review
+rating              | Number                 | min: 1, max: 5                 | Yes      | Rating value (1-5 stars)
+comment             | String                 | trim: true                     | No       | Review text/comment
+createdAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record creation timestamp
+updatedAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record last update timestamp
+
+Note: Unique compound index on (product, user) ensures one review per customer per product.
+
+
+================================================================================
+5. PAYMENTREQUEST COLLECTION
+================================================================================
+
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+_id                 | ObjectId               | Primary Key, Auto-generated    | Yes      | Unique identifier for the payment request record
+paymentId           | String                 | unique: true                   | Yes      | Unique payment identifier/transaction ID
+user                | ObjectId               | ref: "User"                    | Yes      | Reference to the User making the payment
+items               | Array of Objects       | -                              | Yes      | Array of items (product references and quantities)
+totalAmount         | Number                 | -                              | Yes      | Total payment amount
+paymentMethod       | String                 | enum: ["UPI"]                  | Yes      | Payment method (currently only UPI)
+status              | String                 | enum: ["pending", "paid",       | No       | Payment request status
+                                                    "failed"],
+                                                    default: "pending"
+meta                | Object                 | default: {}                    | No       | Additional metadata (e.g., UPI URI, transaction info)
+createdAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record creation timestamp
+updatedAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record last update timestamp
+
+
+================================================================================
+SCHEMA RELATIONSHIPS
+================================================================================
+
+1. User → Product (One-to-Many)
+   - A User (farmer) can have multiple Products
+   - Product.farmer references User._id
+
+2. User → Order (One-to-Many)
+   - A User (customer) can have multiple Orders
+   - Order.user references User._id
+
+3. Product → Order (Many-to-Many via OrderItem)
+   - A Product can be in multiple Orders
+   - An Order can contain multiple Products
+   - Relationship is through Order.items array
+
+4. User → Review (One-to-Many)
+   - A User (customer) can write multiple Reviews
+   - Review.user references User._id
+
+5. Product → Review (One-to-Many)
+   - A Product can have multiple Reviews
+   - Review.product references Product._id
+   - Unique constraint: (product, user) ensures one review per customer per product
+
+6. User → PaymentRequest (One-to-Many)
+   - A User can have multiple PaymentRequests
+   - PaymentRequest.user references User._id
+
+
+================================================================================
+INDEXES
+================================================================================
+
+1. User Collection:
+   - email: Unique index (enforced by unique: true constraint)
+
+2. Review Collection:
+   - Compound unique index on (product, user) - prevents duplicate reviews
+
+3. PaymentRequest Collection:
+   - paymentId: Unique index (enforced by unique: true constraint)
+
+4. All Collections:
+   - _id: Primary key index (automatic in MongoDB)
+   - createdAt, updatedAt: Timestamp fields (automatic with timestamps: true)
+
+
+================================================================================
+NOTES
+================================================================================
+
+- All schemas use Mongoose ODM (Object Document Mapper) for MongoDB
+- Timestamps (createdAt, updatedAt) are automatically managed by Mongoose when timestamps: true is set
+- ObjectId references use Mongoose's populate() method for joining related documents
+- Password fields are hashed using bcrypt before storage
+- Enum constraints ensure data integrity at the database level
+- Default values are applied when fields are not provided during document creation

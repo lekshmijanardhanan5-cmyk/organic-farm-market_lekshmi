@@ -47,12 +47,14 @@ function LoginPage() {
   return (
     <div style={{ maxWidth: 450, margin: '3rem auto' }}>
       <div className="card">
-        <h2 style={{ marginTop: 0, marginBottom: '2rem', textAlign: 'center', color: '#28a745' }}>Login</h2>
+        <h2 style={{ marginTop: 0, marginBottom: '2rem', textAlign: 'center', color: '#1b4332' }}>Login</h2>
         {error && <div className="error">{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
             <input
               type="email"
+              name="email"
+              autoComplete="username"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -64,6 +66,8 @@ function LoginPage() {
           <div>
             <input
               type="password"
+              name="password"
+              autoComplete="current-password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -77,7 +81,7 @@ function LoginPage() {
           </button>
         </form>
         <p style={{ marginTop: '2rem', textAlign: 'center', color: '#6c757d', fontSize: '0.95rem' }}>
-          Don't have an account? <Link to="/register" style={{ color: '#28a745', fontWeight: 500, textDecoration: 'none' }}>Register here</Link>
+          Don't have an account? <Link to="/register" style={{ color: '#c9a84c', fontWeight: 600, textDecoration: 'none' }}>Register here</Link>
         </p>
       </div>
     </div>

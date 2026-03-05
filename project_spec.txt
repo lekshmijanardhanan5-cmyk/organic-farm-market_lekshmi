@@ -43,28 +43,44 @@ This simplified academic model contains three user roles: Admin, Farmer, and Cus
    The simplified database for the academic model contains three schemas: User, Product, and Order. Each schema focuses only on the fields required for core functionality.
 
    A. User Schema
-Name (String)
-Email (String, Unique)
-Password (String, Hashed)
-Role (String: 'admin' | 'farmer' | 'customer')
+Name (String, Required)
+Email (String, Unique, Required)
+Password (String, Hashed, Required)
+PhoneNumber (String, Optional)
+Address (String, Optional)
+Place (String, Optional)
+Landmark (String, Optional)
+Pincode (String, Optional - 6 digits)
+FarmName (String, Optional - for farmers)
+ProductTypes (Array of Strings, Optional - for farmers)
+YearsOfExperience (Number, Optional - for farmers)
+Role (String: 'admin' | 'farmer' | 'customer', Default: 'customer')
+IsApproved (Boolean, Default: true for admin/customer, false for farmers)
+IsBlocked (Boolean, Default: false)
 CreatedAt (Timestamp)
+UpdatedAt (Timestamp)
 
    B. Product Schema
-Title (String)
-Description (String)
-Price (Number)
-Category (String)
-ImageURL (String)
-FarmerID (Reference to User)
+Title (String, Required)
+Description (String, Optional)
+Price (Number, Required)
+Category (String, Optional)
+ImageUrl (String, Optional)
+Farmer (Reference to User, Required)
 IsAvailable (Boolean, Default: true)
 CreatedAt (Timestamp)
+UpdatedAt (Timestamp)
 
    C. Order Schema
-UserID (Reference to User – Customer)
-Items (Array of Objects: { ItemID (Reference to Product), Quantity (Number) })
-TotalAmount (Number)
-Status (String: 'Pending' | 'Accepted' | 'Packed' | 'Delivered')
+User (Reference to User – Customer, Required)
+Items (Array of Objects: { Product (Reference to Product), Quantity (Number, min: 1) }, Required)
+TotalAmount (Number, Required)
+Status (String: 'Pending' | 'Accepted' | 'Packed' | 'Delivered', Default: 'Pending')
+PaymentMethod (String: 'COD' | 'UPI', Default: 'COD', Required)
+UpiId (String, Required if PaymentMethod is 'UPI')
+PaymentStatus (String: 'Pending' | 'Paid' | 'Failed', Default: 'Pending')
 CreatedAt (Timestamp)
+UpdatedAt (Timestamp)
 
 
 6. FEATURE WORKFLOW (The "User Journey")
@@ -79,9 +95,12 @@ User can click on any product to view detailed product information.
 3. Product Details
 User views full product details including description, price, and farmer info.
 
-4. Order
+4. Order & Payment
 User clicks "Order Now" on a selected product and enters quantity.
-The system creates a new Order document in MongoDB with status Pending.
+User selects a payment method (Cash on Delivery or UPI).
+- If COD is selected: Order is created with paymentStatus 'Pending'.
+- If UPI is selected: User must enter a valid UPI ID (format: name@upi). After entering UPI ID and clicking "Pay Now", the system simulates a successful payment (demo mode) and creates the order with paymentStatus 'Paid'.
+The system creates a new Order document in MongoDB with status 'Pending' and the selected payment method.
 
 5. Farmer/Admin View
 Farmer/Admin refreshes dashboard and sees the new order.
@@ -93,40 +112,43 @@ After an order is placed:
 - The farmer can accept and pack orders that include their products and mark them as delivered when complete.
 - Admins can also view and update order statuses across the system.
 - Users see order status updates in their order history (Pending → Accepted → Packed → Delivered).
+- Payment method (COD/UPI) and UPI ID (if applicable) are displayed in admin and farmer order views.
+
+Real-time Updates
+- The system supports Server-Sent Events (SSE) for real-time order status updates.
+- Customers, farmers, and admins can subscribe to order status changes via the SSE endpoint.
+- Order status changes are broadcasted in real-time to authorized subscribers.
 
 User Notification
-Users see the order status updated (Pending → Accepted → Packed → Delivered) within their order history.
+Users see the order status updated (Pending → Accepted → Packed → Delivered) within their order history, along with payment method and payment status information.
 7. API ENDPOINTS (The URL Rules)
 --------------------------------
 Authentication
-POST /api/auth/register → Register new user
-POST /api/auth/login → Login user
-GET /api/auth/profile → Get logged-in user profile
-PUT /api/auth/profile → Update user profile
-
-Users
-GET /api/users/profile → Get logged-in user profile
-PUT /api/users/profile → Update user profile
+POST /api/auth/register → Register new user (validates role: admin, farmer, customer)
+POST /api/auth/login → Login user (blocks login if account is blocked)
+GET /api/auth/profile → Get logged-in user profile (returns all user fields except password)
+PUT /api/auth/profile → Update user profile (validates email, phone number, pincode formats)
 
 Customer
-GET /api/customer/stats → Get customer statistics (orders, total spent)
+GET /api/customer/stats → Get customer statistics (orders by status, total spent)
 
 Farmer
 GET /api/farmer/products → Get farmer's own products
-DELETE /api/farmer/products/:id → Delete farmer's own product
-GET /api/farmer/stats → Get farmer statistics (products, orders, revenue)
+DELETE /api/farmer/products/:id → Delete farmer's own product (only if owner)
+GET /api/farmer/stats → Get farmer statistics (total products, orders by status, revenue from delivered orders)
 
 Products
-GET /api/products → Get list of organic products
-GET /api/products/:id → Get single product by ID (public)
-POST /api/products → Create new product (Farmer/Admin)
-PUT /api/products/:id → Update product (Farmer/Admin)
-DELETE /api/products/:id → Delete product (Admin only)
+GET /api/products → Get list of organic products (public - only from approved and non-blocked farmers)
+GET /api/products/:id → Get single product by ID (public - only if farmer is approved and not blocked)
+POST /api/products → Create new product (Farmer/Admin - farmers must be approved and not blocked)
+PUT /api/products/:id → Update product (Farmer/Admin - farmers can only update their own products)
+DELETE /api/products/:id → Delete product (Admin or product owner farmer)
 
 Orders
-POST /api/orders → Place new order
+POST /api/orders → Place new order (requires: items, paymentMethod; upiId required if paymentMethod is 'UPI')
 GET /api/orders/user → Get user orders (with optional status filter)
 GET /api/orders/farmer → Get farmer orders (only products from logged-in farmer, with optional status filter)
+GET /api/orders/subscribe/:orderId → Subscribe to real-time order status updates via Server-Sent Events (SSE)
 PUT /api/orders/:id/status → Update order status (Farmer/Admin)
 
 Admin
@@ -135,8 +157,9 @@ GET /api/admin/users → Get all users (with optional filters: role, isApproved,
 PUT /api/admin/users/:id/approve → Approve/reject farmer
 PUT /api/admin/users/:id/block → Block/unblock user
 DELETE /api/admin/users/:id → Delete user
-GET /api/admin/products → Get all products
-GET /api/admin/orders → Get all orders
+GET /api/admin/products → Get all products (includes unapproved farmer products)
+GET /api/admin/orders → Get all orders (with populated user and product details)
+GET /api/admin/stats → Get dashboard statistics (users, products, orders, revenue, pending farmers, blocked users)
  
 
  

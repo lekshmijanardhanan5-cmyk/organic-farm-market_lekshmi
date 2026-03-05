@@ -13,36 +13,42 @@ function App() {
   return (
     <div className="container">
       <header style={{ 
-        background: 'white', 
-        padding: '1.25rem 2rem', 
+        background: '#1b4332', 
+        padding: '1rem 2rem', 
         marginBottom: '2rem', 
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        borderRadius: '0',
+        boxShadow: '0 2px 12px rgba(27,67,50,0.2)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        border: '1px solid #e9ecef'
+        border: 'none',
+        marginLeft: '-1.5rem',
+        marginRight: '-1.5rem',
+        marginTop: '-1.5rem'
       }}>
-        <h1 style={{ margin: 0, color: '#28a745', fontSize: '1.5rem', fontWeight: 600 }}>🌱 Organic Farm Market</h1>
-        <nav style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
-          <Link to="/" style={{ textDecoration: 'none', color: '#333', fontWeight: 500, padding: '0.5rem 0', transition: 'color 0.2s' }} onMouseEnter={(e) => { e.target.style.color = '#28a745' }} onMouseLeave={(e) => { e.target.style.color = '#333' }}>Products</Link>
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <h1 style={{ margin: 0, color: '#ffffff', fontSize: '1.4rem', fontWeight: 700, fontFamily: "'Playfair Display', Georgia, serif", letterSpacing: '0.02em' }}>Organico</h1>
+        </Link>
+        <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          <Link to="/" style={{ textDecoration: 'none', color: 'rgba(255,255,255,0.85)', fontWeight: 500, fontSize: '0.9rem', padding: '0.5rem 0', transition: 'color 0.2s', textTransform: 'uppercase', letterSpacing: '0.08em' }} onMouseEnter={(e) => { e.target.style.color = '#ffffff' }} onMouseLeave={(e) => { e.target.style.color = 'rgba(255,255,255,0.85)' }}>Shop</Link>
           {user ? (
             <>
-              <Link to="/dashboard" style={{ textDecoration: 'none', color: '#333', fontWeight: 500, padding: '0.5rem 0', transition: 'color 0.2s' }} onMouseEnter={(e) => { e.target.style.color = '#28a745' }} onMouseLeave={(e) => { e.target.style.color = '#333' }}>Dashboard</Link>
-              <span style={{ color: '#6c757d', padding: '0 0.5rem' }}>{user.name}</span>
+              <Link to="/dashboard" style={{ textDecoration: 'none', color: 'rgba(255,255,255,0.85)', fontWeight: 500, fontSize: '0.9rem', padding: '0.5rem 0', transition: 'color 0.2s', textTransform: 'uppercase', letterSpacing: '0.08em' }} onMouseEnter={(e) => { e.target.style.color = '#ffffff' }} onMouseLeave={(e) => { e.target.style.color = 'rgba(255,255,255,0.85)' }}>Dashboard</Link>
+              <span style={{ color: 'rgba(255,255,255,0.65)', padding: '0 0.25rem', fontSize: '0.9rem' }}>{user.name}</span>
               <button 
                 onClick={logout} 
-                className="btn btn-secondary"
-                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}
+                onMouseEnter={(e) => { e.target.style.backgroundColor = 'rgba(255,255,255,0.1)'; e.target.style.borderColor = 'rgba(255,255,255,0.5)' }}
+                onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.borderColor = 'rgba(255,255,255,0.3)' }}
               >
                 Logout
-        </button>
+              </button>
             </>
           ) : (
             <>
-              <Link to="/login" style={{ textDecoration: 'none', color: '#333', fontWeight: 500, padding: '0.5rem 0', transition: 'color 0.2s' }} onMouseEnter={(e) => { e.target.style.color = '#28a745' }} onMouseLeave={(e) => { e.target.style.color = '#333' }}>Login</Link>
-              <Link to="/register" className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
-                Register
+              <Link to="/login" style={{ textDecoration: 'none', color: 'rgba(255,255,255,0.85)', fontWeight: 500, fontSize: '0.9rem', padding: '0.5rem 0', transition: 'color 0.2s', textTransform: 'uppercase', letterSpacing: '0.08em' }} onMouseEnter={(e) => { e.target.style.color = '#ffffff' }} onMouseLeave={(e) => { e.target.style.color = 'rgba(255,255,255,0.85)' }}>Login</Link>
+              <Link to="/register" style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', backgroundColor: '#c9a84c', color: '#ffffff', borderRadius: '4px', textDecoration: 'none', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#b8963a' }} onMouseLeave={(e) => { e.target.style.backgroundColor = '#c9a84c' }}>
+                Get Started
               </Link>
             </>
           )}

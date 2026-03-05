@@ -155,7 +155,7 @@ function ProductDetailsPage() {
     <>
     <div>
       <div style={{ marginBottom: '1rem' }}>
-        <Link to="/" style={{ color: '#007bff', textDecoration: 'none' }}>
+        <Link to="/" style={{ color: '#1b4332', textDecoration: 'none', fontWeight: 500 }}>
           ← Back to Products
         </Link>
       </div>
@@ -179,7 +179,7 @@ function ProductDetailsPage() {
               <div style={{
                 width: '100%',
                 aspectRatio: '1',
-                backgroundColor: '#f8f9fa',
+                backgroundColor: '#faf8f4',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -194,7 +194,7 @@ function ProductDetailsPage() {
 
           {/* Product Info */}
           <div>
-            <h1 style={{ margin: '0 0 0.5rem 0', color: '#28a745' }}>{product.title}</h1>
+            <h1 style={{ margin: '0 0 0.5rem 0', color: '#1b4332' }}>{product.title}</h1>
             
             {avgRating && (
               <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -203,7 +203,7 @@ function ProductDetailsPage() {
               </div>
             )}
 
-            <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745', margin: '1rem 0' }}>
+            <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1b4332', margin: '1rem 0' }}>
               ₹{product.price}
             </p>
 
@@ -211,7 +211,7 @@ function ProductDetailsPage() {
               {product.description}
             </p>
 
-            <div style={{ margin: '1rem 0', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+            <div style={{ margin: '1rem 0', padding: '1rem', backgroundColor: '#faf8f4', borderRadius: '6px' }}>
               <p style={{ margin: '0.25rem 0' }}>
                 <strong>Category:</strong> {product.category || 'Uncategorized'}
               </p>
@@ -220,7 +220,7 @@ function ProductDetailsPage() {
               </p>
               <p style={{ margin: '0.25rem 0' }}>
                 <strong>Availability:</strong>{' '}
-                <span style={{ color: product.isAvailable ? '#28a745' : 'red', fontWeight: 'bold' }}>
+                <span style={{ color: product.isAvailable ? '#1b4332' : 'red', fontWeight: 'bold' }}>
                   {product.isAvailable ? 'Available' : 'Currently Unavailable'}
                 </span>
               </p>
@@ -258,7 +258,7 @@ function ProductDetailsPage() {
       {/* Add Review Section - Prominent for logged-in customers */}
       {user?.role === 'customer' && (
         <div className="card" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#28a745' }}>Add Your Review</h2>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#1b4332' }}>Add Your Review</h2>
           
           {checkingReview ? (
             <p style={{ color: '#6c757d' }}>Checking review eligibility...</p>
@@ -273,7 +273,7 @@ function ProductDetailsPage() {
                   Write a Review
                 </button>
               ) : (
-                <form onSubmit={handleReviewSubmit} style={{ padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <form onSubmit={handleReviewSubmit} style={{ padding: '1rem', backgroundColor: '#faf8f4', borderRadius: '6px' }}>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                       Rating:
@@ -336,8 +336,8 @@ function ProductDetailsPage() {
               )}
             </div>
           ) : (
-            <div style={{ padding: '1rem', backgroundColor: '#fff3cd', borderRadius: '6px', border: '1px solid #ffc107' }}>
-              <p style={{ margin: 0, color: '#856404' }}>
+            <div style={{ padding: '1rem', backgroundColor: '#fdf6e3', borderRadius: '6px', border: '1px solid #e0dcd4' }}>
+              <p style={{ margin: 0, color: '#7a6c3a' }}>
                 {user ? 'You can review this product after your order has been delivered.' : 'Please login to write a review.'}
               </p>
             </div>
@@ -362,9 +362,9 @@ function ProductDetailsPage() {
                 key={r._id}
                 style={{
                   padding: '1rem',
-                  backgroundColor: '#f8f9fa',
+                  backgroundColor: '#faf8f4',
                   borderRadius: '6px',
-                  border: '1px solid #dee2e6'
+                  border: '1px solid #e0dcd4'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
@@ -435,7 +435,7 @@ function ProductDetailsPage() {
                   style={{ padding: '0.5rem' }}
                 />
                 {selectedUpi && !/^[^\s@]+@[^\s@]+$/.test(selectedUpi) && (
-                  <small style={{ color: '#dc3545' }}>Enter a valid UPI ID (e.g., name@upi)</small>
+                  <small style={{ color: '#9b2c2c' }}>Enter a valid UPI ID (e.g., name@upi)</small>
                 )}
               </div>
             )}
