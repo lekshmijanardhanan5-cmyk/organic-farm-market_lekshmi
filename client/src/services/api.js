@@ -1,6 +1,9 @@
 import { useAuth } from '../context/AuthContext'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+// Normalize BASE_URL: remove trailing slashes and /api if present
+// since all API paths already start with /api/
+let BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+BASE_URL = BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '')
 
 export async function apiRequest(path, { method = 'GET', body, token } = {}) {
   const headers = { 'Content-Type': 'application/json' }
