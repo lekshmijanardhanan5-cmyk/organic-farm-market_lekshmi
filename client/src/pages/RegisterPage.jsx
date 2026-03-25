@@ -42,7 +42,12 @@ function RegisterPage() {
               type="text"
               placeholder="Full Name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value
+                if (/^[A-Za-z ]*$/.test(value)) {
+                  setName(value)
+                }
+              }}
               required
               className="input"
             />

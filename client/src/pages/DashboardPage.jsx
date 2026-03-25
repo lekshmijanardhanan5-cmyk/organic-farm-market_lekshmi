@@ -367,7 +367,7 @@ function CustomerOrders() {
             console.error("Failed to handle SSE message", e)
           }
         }
-        es.onerror = (err) => {
+        es.onerror = () => {
           // close on error
           es.close()
           delete esMap[o._id]
@@ -1075,6 +1075,7 @@ function FarmerProducts() {
 
   useEffect(() => {
     if (token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       load()
     }
   }, [token])
@@ -1132,15 +1133,6 @@ function FarmerProducts() {
     if (!confirm('Are you sure you want to delete this product?')) return
     try {
       await api.delete(`/api/farmer/products/${id}`)
-      await load()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  const toggleAvailability = async (id, currentStatus) => {
-    try {
-      await api.put(`/api/products/${id}`, { isAvailable: !currentStatus })
       await load()
     } catch (err) {
       setError(err.message)
@@ -1918,6 +1910,7 @@ function AdminLayout({ children, pageTitle }) {
     { path: '/dashboard/admin/users', label: 'Users', icon: '👥' },
     { path: '/dashboard/admin/products', label: 'Products', icon: '📦' },
     { path: '/dashboard/admin/orders', label: 'Orders', icon: '🛒' },
+    { path: '/dashboard/admin/transactions', label: 'Transactions', icon: '💳' },
   ]
 
   const isActive = (path) => location.pathname === path
@@ -1972,8 +1965,9 @@ function AdminLayout({ children, pageTitle }) {
       <aside
         className={sidebarOpen ? 'mobile-open' : ''}
         style={{
-          position: 'fixed',
-          left: 0,
+          // Desktop: keep sidebar in the normal layout flow so it never overlaps page content.
+          // Mobile: we switch to `position: fixed` via the media-query below for the slide-in behavior.
+          position: 'sticky',
           top: 0,
           width: '260px',
           height: '100vh',
@@ -1981,6 +1975,7 @@ function AdminLayout({ children, pageTitle }) {
           borderRight: '1px solid #e5e7eb',
           display: 'flex',
           flexDirection: 'column',
+          flexShrink: 0,
           zIndex: 1000,
           boxShadow: '2px 0 4px rgba(0, 0, 0, 0.05)',
           transition: 'transform 0.3s ease'
@@ -2051,7 +2046,6 @@ function AdminLayout({ children, pageTitle }) {
       <div
         className="admin-main-content"
         style={{
-          marginLeft: '260px',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
@@ -2135,13 +2129,15 @@ function AdminLayout({ children, pageTitle }) {
             display: block !important;
           }
           aside {
+            position: fixed;
+            top: 0;
+            left: 0;
+          }
+          aside {
             transform: translateX(-100%);
           }
           aside.mobile-open {
             transform: translateX(0);
-          }
-          .admin-main-content {
-            margin-left: 0 !important;
           }
         }
         @media (max-width: 768px) {
@@ -2928,6 +2924,131 @@ function AdminOrders() {
 
  
 
+function TransactionList({ title, transactions, loading, error, showFarmerBreakdown }) {
+  if (loading) return <div className="loading">Loading transactions...</div>
+  if (error) return <div className="error">Error: {error}</div>
+
+  return (
+    <div className="card">
+      <h3 style={{ marginTop: 0 }}>{title}</h3>
+      {transactions.length === 0 ? (
+        <div style={{ color: '#6c757d', padding: '1rem 0' }}>No transactions found.</div>
+      ) : (
+        transactions.map((tx) => (
+          <div key={tx._id} className="card" style={{ marginTop: '1rem' }}>
+            <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+              TXN #{String(tx._id).slice(-8)} • {new Date(tx.createdAt).toLocaleString()}
+            </p>
+            <p style={{ margin: '0.25rem 0', fontWeight: 700, fontSize: '1.05rem', color: '#1b4332' }}>
+              ₹{tx.totalAmount} • {tx.paymentMethod} • {tx.paymentStatus}
+            </p>
+            <p style={{ margin: '0.25rem 0', color: '#374151' }}>
+              Customer: {tx.customer?.name || 'Unknown'} {tx.customer?.email ? `(${tx.customer.email})` : ''}
+            </p>
+            {tx.upiId && (
+              <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+                UPI: {tx.upiId}
+              </p>
+            )}
+            {tx.cardLast4 && (
+              <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+                Card ending: {tx.cardLast4}
+              </p>
+            )}
+            {showFarmerBreakdown && (
+              <p style={{ margin: '0.25rem 0', color: '#6c757d' }}>
+                Farmers: {(tx.farmers || []).map((f) => f.name).filter(Boolean).join(', ') || 'N/A'}
+              </p>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+function CustomerTransactions() {
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const api = useApi()
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await api.get('/api/transactions/customer')
+        setTransactions(data || [])
+      } catch (err) {
+        setError(err.message || 'Failed to load transactions')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  return <TransactionList title="My Transactions" transactions={transactions} loading={loading} error={error} showFarmerBreakdown />
+}
+
+function FarmerTransactions() {
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const api = useApi()
+  const { user } = useAuth()
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await api.get('/api/transactions/farmer')
+        setTransactions(data || [])
+      } catch (err) {
+        setError(err.message || 'Failed to load transactions')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const mapped = transactions.map((tx) => ({
+    ...tx,
+    items: (tx.items || []).filter((item) => {
+      const farmerId = item.farmer?._id || item.farmer
+      return String(farmerId) === String(user?._id || user?.id)
+    }),
+  }))
+
+  return <TransactionList title="Farmer Transaction History" transactions={mapped} loading={loading} error={error} showFarmerBreakdown={false} />
+}
+
+function AdminTransactions() {
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const api = useApi()
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await api.get('/api/transactions/admin')
+        setTransactions(data || [])
+      } catch (err) {
+        setError(err.message || 'Failed to load transactions')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  return (
+    <AdminLayout pageTitle="Transactions">
+      <TransactionList title="All Transactions" transactions={transactions} loading={loading} error={error} showFarmerBreakdown />
+    </AdminLayout>
+  )
+}
+
 function DashboardPage() {
   const { user, logout } = useAuth()
 
@@ -2959,6 +3080,7 @@ function DashboardPage() {
                     <Link to="/dashboard/customer/stats" className="nav-link">Dashboard</Link>
                     <Link to="/dashboard/customer/profile" className="nav-link">Profile</Link>
                     <Link to="/dashboard/customer/orders" className="nav-link">My Orders</Link>
+                    <Link to="/dashboard/customer/transactions" className="nav-link">Transactions</Link>
                   </>
                 )}
                 {user?.role === 'farmer' && (
@@ -2967,6 +3089,7 @@ function DashboardPage() {
                     <Link to="/dashboard/farmer/profile" className="nav-link">Profile</Link>
                     <Link to="/dashboard/farmer/products" className="nav-link">My Products</Link>
                     <Link to="/dashboard/farmer/orders" className="nav-link">Orders</Link>
+                    <Link to="/dashboard/farmer/transactions" className="nav-link">Transactions</Link>
                   </>
                 )}
               </div>
@@ -2991,14 +3114,17 @@ function DashboardPage() {
             <Route path="customer/stats" element={<CustomerStats />} />
             <Route path="customer/profile" element={<CustomerProfile />} />
             <Route path="customer/orders" element={<CustomerOrders />} />
+            <Route path="customer/transactions" element={<CustomerTransactions />} />
             <Route path="farmer/stats" element={<FarmerStats />} />
             <Route path="farmer/profile" element={<FarmerProfile />} />
             <Route path="farmer/products" element={<FarmerProducts />} />
             <Route path="farmer/orders" element={<FarmerOrders />} />
+            <Route path="farmer/transactions" element={<FarmerTransactions />} />
             <Route path="admin/stats" element={<AdminStats />} />
             <Route path="admin/users" element={<AdminUsers />} />
             <Route path="admin/products" element={<AdminProducts />} />
             <Route path="admin/orders" element={<AdminOrders />} />
+            <Route path="admin/transactions" element={<AdminTransactions />} />
             
           </Routes>
         </div>

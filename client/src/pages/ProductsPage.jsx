@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useApi, apiRequest } from '../services/api'
 
 function ProductCard({ product, user, api, onOrderSuccess }) {
   const { token } = useAuth()
   const [quantity, setQuantity] = useState(1)
-  const [paymentMethod, setPaymentMethod] = useState('COD')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState('')
   const [selectedUpi, setSelectedUpi] = useState('')
+  const [cardNumber, setCardNumber] = useState('')
+  const [cardHolderName, setCardHolderName] = useState('')
+  const [cardExpiry, setCardExpiry] = useState('')
+  const [cardCvv, setCardCvv] = useState('')
+  const [gatewaySession, setGatewaySession] = useState(null)
+  const [gatewayStep, setGatewayStep] = useState('select')
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState(false)
   const [reviews, setReviews] = useState([])
   const [showReviews, setShowReviews] = useState(false)
   const [showReviewForm, setShowReviewForm] = useState(false)
@@ -68,6 +75,14 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
     }
     // Open payment modal to select payment method
     setSelectedPayment('')
+    setSelectedUpi('')
+    setCardNumber('')
+    setCardHolderName('')
+    setCardExpiry('')
+    setCardCvv('')
+    setGatewaySession(null)
+    setGatewayStep('select')
+    setPaymentSuccess(false)
     setShowPaymentModal(true)
   }
 
@@ -92,6 +107,13 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
   const avgRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null
+
+  const sanitizedCardNumber = cardNumber.replace(/\s/g, '')
+  const isCardNumberValid = /^\d{13,19}$/.test(sanitizedCardNumber)
+  const isCardHolderValid = cardHolderName.trim().length >= 2
+  const isCardCvvValid = /^\d{3,4}$/.test(cardCvv)
+  const isCardExpiryValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExpiry)
+  const isCardFormValid = isCardNumberValid && isCardHolderValid && isCardCvvValid && isCardExpiryValid
 
   return (
     <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -154,70 +176,248 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
           zIndex: 2000
         }}>
           <div className="card" style={{ width: '100%', maxWidth: 420, padding: '1rem' }}>
-            <h4 style={{ marginTop: 0 }}>Select Payment Method</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
-              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
-                <input type="radio" name={`modal-payment-${product._id}`} value="COD" checked={selectedPayment === 'COD'} onChange={(e) => setSelectedPayment(e.target.value)} />
-                <span>Cash on Delivery</span>
-              </label>
-              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
-                <input type="radio" name={`modal-payment-${product._id}`} value="UPI" checked={selectedPayment === 'UPI'} onChange={(e) => setSelectedPayment(e.target.value)} />
-                <span>UPI</span>
-              </label>
-              {selectedPayment === 'UPI' && (
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label style={{ fontWeight: 500 }}>Enter UPI ID</label>
-                  <input
-                    type="text"
-                    value={selectedUpi}
-                    onChange={(e) => setSelectedUpi(e.target.value)}
-                    placeholder="example@upi"
-                    className="input"
-                    style={{ padding: '0.5rem' }}
-                  />
-                  {selectedUpi && !/^[^\s@]+@[^\s@]+$/.test(selectedUpi) && (
-                    <small style={{ color: '#9b2c2c' }}>Enter a valid UPI ID (e.g., name@upi)</small>
+            {paymentSuccess ? (
+              <div style={{ textAlign: 'center', padding: '1rem' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
+                <h4 style={{ marginTop: 0, color: '#1b4332', marginBottom: '0.5rem' }}>Payment Successful</h4>
+                <p style={{ color: '#6c757d', marginBottom: '1.5rem' }}>Your order has been placed successfully!</p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setShowPaymentModal(false)
+                    setSelectedPayment('')
+                    setSelectedUpi('')
+                    setCardNumber('')
+                    setCardHolderName('')
+                    setCardExpiryMonth('')
+                    setCardExpiryYear('')
+                    setCardCvv('')
+                    setGatewaySession(null)
+                    setGatewayStep('select')
+                    setPaymentSuccess(false)
+                    setQuantity(1)
+                    if (onOrderSuccess) onOrderSuccess()
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <h4 style={{ marginTop: 0 }}>Simulated Payment Gateway</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name={`modal-payment-${product._id}`} 
+                      value="COD" 
+                      checked={selectedPayment === 'COD'} 
+                      onChange={(e) => {
+                        setSelectedPayment(e.target.value)
+                        setGatewaySession(null)
+                        setGatewayStep('select')
+                      }}
+                      disabled={processingPayment}
+                    />
+                    <span>Cash on Delivery</span>
+                  </label>
+                  <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name={`modal-payment-${product._id}`} 
+                      value="UPI" 
+                      checked={selectedPayment === 'UPI'} 
+                      onChange={(e) => {
+                        setSelectedPayment(e.target.value)
+                        setGatewaySession(null)
+                        setGatewayStep('select')
+                      }}
+                      disabled={processingPayment}
+                    />
+                    <span>UPI</span>
+                  </label>
+                  <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name={`modal-payment-${product._id}`}
+                      value="CARD"
+                      checked={selectedPayment === 'CARD'}
+                      onChange={(e) => {
+                        setSelectedPayment(e.target.value)
+                        setGatewaySession(null)
+                        setGatewayStep('select')
+                      }}
+                      disabled={processingPayment}
+                    />
+                    <span>Debit/Credit Card</span>
+                  </label>
+                  {selectedPayment === 'UPI' && (
+                    <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <label style={{ fontWeight: 500 }}>Enter UPI ID</label>
+                      <input
+                        type="text"
+                        value={selectedUpi}
+                        onChange={(e) => setSelectedUpi(e.target.value)}
+                        placeholder="example@upi"
+                        className="input"
+                        style={{ padding: '0.5rem' }}
+                        disabled={processingPayment}
+                      />
+                      {selectedUpi && !/^[^\s@]+@[^\s@]+$/.test(selectedUpi) && (
+                        <small style={{ color: '#9b2c2c' }}>Enter a valid UPI ID (e.g., name@upi)</small>
+                      )}
+                    </div>
+                  )}
+                  {selectedPayment === 'CARD' && (
+                    <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={cardHolderName}
+                        onChange={(e) => setCardHolderName(e.target.value)}
+                        placeholder="Card holder name"
+                        className="input"
+                        autoComplete="cc-name"
+                        disabled={processingPayment}
+                      />
+                      <input
+                        type="tel"
+                        value={cardNumber}
+                        onChange={(e) => {
+                          const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 19)
+                          const grouped = digitsOnly.replace(/(.{4})/g, '$1 ').trim()
+                          setCardNumber(grouped)
+                        }}
+                        placeholder="1234 5678 9012 3456"
+                        className="input"
+                        inputMode="numeric"
+                        autoComplete="cc-number"
+                        disabled={processingPayment}
+                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <input
+                          type="tel"
+                          value={cardExpiry}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 4)
+                            const formatted = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits
+                            setCardExpiry(formatted)
+                          }}
+                          placeholder="MM/YY"
+                          className="input"
+                          inputMode="numeric"
+                          autoComplete="cc-exp"
+                          disabled={processingPayment}
+                        />
+                        <input
+                          type="tel"
+                          value={cardCvv}
+                          onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          placeholder="CVV"
+                          className="input"
+                          inputMode="numeric"
+                          autoComplete="cc-csc"
+                          disabled={processingPayment}
+                        />
+                      </div>
+                      {!isCardFormValid && (cardNumber || cardHolderName || cardExpiry || cardCvv) && (
+                        <small style={{ color: '#9b2c2c' }}>
+                          Use valid card details: 13-19 digit card number, MM/YY expiry, and 3-4 digit CVV.
+                        </small>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => { setShowPaymentModal(false); setSelectedPayment(''); setSelectedUpi(''); }}>Cancel</button>
-              <button
-                className="btn btn-primary"
-                disabled={!selectedPayment || (selectedPayment === 'UPI' && !selectedUpi)}
-                onClick={async () => {
-                  try {
-                    if (selectedPayment === 'UPI') {
-                      // Simulate demo payment
-                      await new Promise((r) => setTimeout(r, 700))
-                      alert('Payment successful (Demo Mode)')
-                      await api.post('/api/orders', {
-                        items: [{ product: product._id, quantity: Number(quantity) || 1 }],
-                        paymentMethod: 'UPI',
-                        upiId: selectedUpi.trim(),
-                        paymentStatus: 'Paid',
-                      })
-                      alert('Order placed successfully!')
-                    } else {
-                      await api.post('/api/orders', {
-                        items: [{ product: product._id, quantity: Number(quantity) || 1 }],
-                        paymentMethod: selectedPayment,
-                      })
-                      alert('Order placed successfully!')
+                {gatewaySession && (
+                  <div style={{ marginTop: '1rem', backgroundColor: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6, padding: '0.75rem' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Gateway Session Ready</p>
+                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#444' }}>Session: {gatewaySession.gatewaySessionId}</p>
+                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#444' }}>Amount: ₹{gatewaySession.amount}</p>
+                    {gatewaySession.card?.last4 && (
+                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#444' }}>Card ending: {gatewaySession.card.last4}</p>
+                    )}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => { 
+                      setShowPaymentModal(false)
+                      setSelectedPayment('')
+                      setSelectedUpi('')
+                      setCardNumber('')
+                      setCardHolderName('')
+                      setCardExpiry('')
+                      setCardCvv('')
+                      setGatewaySession(null)
+                      setGatewayStep('select')
+                      setPaymentSuccess(false)
+                    }}
+                    disabled={processingPayment}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    disabled={
+                      !selectedPayment ||
+                      (selectedPayment === 'UPI' && !selectedUpi) ||
+                      (selectedPayment === 'CARD' && !isCardFormValid) ||
+                      processingPayment
                     }
-                    setQuantity(1)
-                    setShowPaymentModal(false)
-                    setSelectedUpi('')
-                    if (onOrderSuccess) onOrderSuccess()
-                  } catch (err) {
-                    alert(err.message || 'Failed to place order')
-                  }
-                }}
-              >
-                {selectedPayment === 'UPI' ? 'Pay Now (Demo)' : 'Confirm Order'}
-              </button>
-            </div>
+                    onClick={async () => {
+                      setProcessingPayment(true)
+                      try {
+                        const payloadItems = [{ product: product._id, quantity: Number(quantity) || 1 }]
+                        const paymentDetails = selectedPayment === 'UPI'
+                          ? { upiId: selectedUpi.trim() }
+                          : selectedPayment === 'CARD'
+                            ? {
+                                cardNumber: sanitizedCardNumber,
+                                cardHolderName: cardHolderName.trim(),
+                                expiryMonth: cardExpiry.slice(0, 2),
+                                expiryYear: `20${cardExpiry.slice(3, 5)}`,
+                                cvv: cardCvv.trim(),
+                              }
+                            : {}
+
+                        if (gatewayStep === 'select') {
+                          const initiated = await api.post('/api/orders/checkout/initiate', {
+                            items: payloadItems,
+                            paymentMethod: selectedPayment,
+                            paymentDetails,
+                          })
+                          setGatewaySession(initiated.gateway)
+                          setGatewayStep('confirm')
+                          setProcessingPayment(false)
+                          return
+                        }
+
+                        await new Promise((r) => setTimeout(r, 800))
+                        await api.post('/api/orders/checkout/confirm', {
+                          items: payloadItems,
+                          paymentMethod: selectedPayment,
+                          paymentDetails,
+                          gatewaySessionId: gatewaySession?.gatewaySessionId,
+                          outcome: 'SUCCESS',
+                        })
+                        setPaymentSuccess(true)
+                      } catch (err) {
+                        alert(err.message || 'Failed to place order')
+                      }
+                      setProcessingPayment(false)
+                    }}
+                  >
+                    {processingPayment
+                      ? 'Processing...'
+                      : gatewayStep === 'select'
+                        ? 'Initiate Payment'
+                        : selectedPayment === 'COD'
+                          ? 'Place COD Order'
+                          : 'Confirm & Pay'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -297,7 +497,6 @@ function ProductCard({ product, user, api, onOrderSuccess }) {
 }
 
 function HeroSection() {
-  const navigate = useNavigate()
   return (
     <section style={{ marginBottom: '3rem' }}>
       {/* Hero Text Area */}
@@ -462,7 +661,6 @@ function ProductsPage() {
   const [categories, setCategories] = useState([])
   const { user } = useAuth()
   const api = useApi()
-  const navigate = useNavigate()
 
   useEffect(() => {
     const load = async () => {

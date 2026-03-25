@@ -1,11 +1,24 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../services/api'
 
 const AuthContext = createContext(null)
 
+function getInitialAuth() {
+  try {
+    const saved = localStorage.getItem('ofm_auth')
+    if (!saved) return { user: null, token: null }
+    const parsed = JSON.parse(saved)
+    return { user: parsed.user ?? null, token: parsed.token ?? null }
+  } catch {
+    return { user: null, token: null }
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [token, setToken] = useState(null)
+  const initialAuth = useMemo(getInitialAuth, [])
+  const [user, setUser] = useState(initialAuth.user)
+  const [token, setToken] = useState(initialAuth.token)
 
   const refreshUser = async (authToken) => {
     try {
@@ -23,21 +36,10 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem('ofm_auth')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setUser(parsed.user)
-        setToken(parsed.token)
-        // Refresh user data from server to get latest approval status
-        if (parsed.token) {
-          refreshUser(parsed.token)
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }, [])
+    // Refresh user data from server to get latest approval status.
+    if (token) refreshUser(token)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
 
   const login = (data) => {
     setUser(data.user)

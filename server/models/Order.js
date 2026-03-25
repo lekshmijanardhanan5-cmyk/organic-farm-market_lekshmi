@@ -20,7 +20,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["COD", "UPI"],
+      enum: ["COD", "UPI", "CARD"],
       default: "COD",
     },
     upiId: {
@@ -34,6 +34,7 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Paid", "Failed"],
       default: "Pending",
     },
+    cardLast4: { type: String },
   },
   { timestamps: true }
 );
