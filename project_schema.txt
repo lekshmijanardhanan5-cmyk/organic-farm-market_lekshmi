@@ -63,10 +63,11 @@ totalAmount         | Number                 | -                              | 
 status              | String                 | enum: ["Pending", "Accepted",   | No       | Current order status
                                                     "Packed", "Delivered"],
                                                     default: "Pending"
-paymentMethod       | String                 | enum: ["COD", "UPI"],           | No       | Payment method selected by customer
+paymentMethod       | String                 | enum: ["COD", "UPI", "CARD"], | No       | Payment method selected by customer
                                                     default: "COD"
-upiId               | String                 | Conditional: required if       | No       | UPI ID for UPI payments
-                                                    paymentMethod === "UPI"
+upiId               | String                 | Conditional (paymentMethod=UPI) | No       | UPI ID for UPI payments
+                                                    (required at runtime when paymentMethod is UPI)
+cardLast4           | String                 | -                              | No       | Card last4 digits for CARD payments
 paymentStatus       | String                 | enum: ["Pending", "Paid",       | No       | Payment processing status
                                                     "Failed"],
                                                     default: "Pending"
@@ -81,7 +82,44 @@ quantity            | Number                 | min: 1                         | 
 
 
 ================================================================================
-4. REVIEW COLLECTION
+4. TRANSACTION COLLECTION
+================================================================================
+
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+_id                 | ObjectId               | Primary Key, Auto-generated    | Yes      | Unique identifier for the transaction record
+order               | ObjectId               | ref: "Order"                   | No       | Reference to the Order (optional; present on successful payment)
+customer            | ObjectId               | ref: "User"                    | Yes      | Reference to the customer who initiated the checkout
+farmers             | Array of ObjectIds     | elements ref: "User";         | Yes      | Farmers involved in this checkout (from purchased products)
+                                                    element required: true
+items               | Array of Objects       | -                              | Yes      | Array of line items (embedded transaction item sub-schema)
+totalAmount         | Number                 | -                              | Yes      | Total amount for the transaction
+paymentMethod       | String                 | enum: ["COD", "UPI", "CARD"]  | Yes      | Payment method used for this transaction
+paymentStatus       | String                 | enum: ["Pending", "Paid",     | Yes      | Payment status for this transaction
+                                                    "Failed"]
+transactionStatus   | String                 | enum: ["Initiated",           | No       | Transaction lifecycle status
+                                                    "Completed", "Failed"],
+                                                    default: "Initiated"
+gatewaySessionId    | String                 | -                              | No       | Simulated gateway session identifier (if applicable)
+gatewayTransactionId| String                 | -                              | No       | Simulated gateway transaction identifier (if applicable)
+upiId               | String                 | -                              | No       | UPI ID used for UPI payments (if applicable)
+cardLast4           | String                 | -                              | No       | Card last4 digits used for card payments (if applicable)
+meta                | Object                 | default: {}                    | No       | Gateway/provider metadata (optional)
+createdAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record creation timestamp
+updatedAt           | Date                   | Auto-generated (timestamp)     | Yes      | Record last update timestamp
+
+--- TransactionItem Sub-Schema (embedded in items array) ---
+Field Name          | Data Type              | Constraints                    | Required | Description
+--------------------|------------------------|--------------------------------|----------|------------------------------------------
+product             | ObjectId               | ref: "Product"                | Yes      | Product reference for this transaction line
+farmer              | ObjectId               | ref: "User"                   | Yes      | Farmer reference (product owner) for this line
+title               | String                 | -                              | Yes      | Product title snapshot at time of checkout
+quantity            | Number                 | min: 1                         | Yes      | Quantity purchased
+unitPrice           | Number                 | min: 0                         | Yes      | Unit price snapshot at time of checkout
+
+
+================================================================================
+5. REVIEW COLLECTION
 ================================================================================
 
 Field Name          | Data Type              | Constraints                    | Required | Description
@@ -98,7 +136,7 @@ Note: Unique compound index on (product, user) ensures one review per customer p
 
 
 ================================================================================
-5. PAYMENTREQUEST COLLECTION
+6. PAYMENTREQUEST COLLECTION
 ================================================================================
 
 Field Name          | Data Type              | Constraints                    | Required | Description
@@ -121,11 +159,11 @@ updatedAt           | Date                   | Auto-generated (timestamp)     | 
 SCHEMA RELATIONSHIPS
 ================================================================================
 
-1. User → Product (One-to-Many)
+1. User (farmer) → Product (One-to-Many)
    - A User (farmer) can have multiple Products
    - Product.farmer references User._id
 
-2. User → Order (One-to-Many)
+2. User (customer) → Order (One-to-Many)
    - A User (customer) can have multiple Orders
    - Order.user references User._id
 
@@ -134,16 +172,32 @@ SCHEMA RELATIONSHIPS
    - An Order can contain multiple Products
    - Relationship is through Order.items array
 
-4. User → Review (One-to-Many)
+4. User (customer) → Transaction (One-to-Many)
+   - A customer can have multiple checkout/payment transactions
+   - Transaction.customer references User._id
+
+5. User (farmer participation) → Transaction (One-to-Many via Transaction.farmers)
+   - Farmers whose products were purchased appear in Transaction.farmers
+   - Relationship is through Transaction.farmers array
+
+6. Order → Transaction (One-to-One / optional)
+   - Transaction.order references Order._id
+   - The order reference is optional (transaction may exist when payment fails)
+
+7. Product → Transaction (Many-to-Many via Transaction.items)
+   - Transaction.items embed product, title, quantity, and unitPrice at checkout time
+   - Relationship is through Transaction.items[].product
+
+8. User (customer) → Review (One-to-Many)
    - A User (customer) can write multiple Reviews
    - Review.user references User._id
 
-5. Product → Review (One-to-Many)
+9. Product → Review (One-to-Many)
    - A Product can have multiple Reviews
    - Review.product references Product._id
    - Unique constraint: (product, user) ensures one review per customer per product
 
-6. User → PaymentRequest (One-to-Many)
+10. User → PaymentRequest (One-to-Many)
    - A User can have multiple PaymentRequests
    - PaymentRequest.user references User._id
 
@@ -161,7 +215,10 @@ INDEXES
 3. PaymentRequest Collection:
    - paymentId: Unique index (enforced by unique: true constraint)
 
-4. All Collections:
+4. Transaction Collection:
+   - No explicit indexes defined
+
+5. All Collections:
    - _id: Primary key index (automatic in MongoDB)
    - createdAt, updatedAt: Timestamp fields (automatic with timestamps: true)
 
