@@ -40,7 +40,7 @@ This simplified academic model contains three user roles: Admin, Farmer, and Cus
 5. DATABASE STRUCTURE (Schemas)
 -------------------------------
 
-   The simplified database for the academic model contains three schemas: User, Product, and Order. Each schema focuses only on the fields required for core functionality.
+  The simplified database for the academic model contains four schemas: User, Product, Order, and Transaction. Each schema focuses only on the fields required for core functionality.
 
    A. User Schema
 Name (String, Required)
@@ -72,15 +72,33 @@ CreatedAt (Timestamp)
 UpdatedAt (Timestamp)
 
    C. Order Schema
-User (Reference to User – Customer, Required)
-Items (Array of Objects: { Product (Reference to Product), Quantity (Number, min: 1) }, Required)
-TotalAmount (Number, Required)
-Status (String: 'Pending' | 'Accepted' | 'Packed' | 'Delivered', Default: 'Pending')
-PaymentMethod (String: 'COD' | 'UPI', Default: 'COD', Required)
-UpiId (String, Required if PaymentMethod is 'UPI')
-PaymentStatus (String: 'Pending' | 'Paid' | 'Failed', Default: 'Pending')
-CreatedAt (Timestamp)
-UpdatedAt (Timestamp)
+  User (Reference to User – Customer, Required)
+  Items (Array of Objects: { Product (Reference to Product), Quantity (Number, min: 1) }, Required)
+  TotalAmount (Number, Required)
+  Status (String: 'Pending' | 'Accepted' | 'Packed' | 'Delivered', Default: 'Pending')
+  PaymentMethod (String: 'COD' | 'UPI' | 'CARD', Default: 'COD', Required)
+  UpiId (String, Required if PaymentMethod is 'UPI')
+  CardLast4 (String, Optional; stored when PaymentMethod is 'CARD')
+  PaymentStatus (String: 'Pending' | 'Paid' | 'Failed', Default: 'Pending')
+  CreatedAt (Timestamp)
+  UpdatedAt (Timestamp)
+
+  D. Transaction Schema (Payment/Sales Ledger)
+  Order (Reference to Order, Optional; created only on successful payment)
+  Customer (Reference to User – Customer, Required)
+  Farmers (Array of References to User – involved farmers, Required)
+  Items (Array of Objects: { Product (ref), Farmer (ref), Title (String), Quantity (Number), UnitPrice (Number) }, Required)
+  TotalAmount (Number, Required)
+  PaymentMethod (String: 'COD' | 'UPI' | 'CARD', Required)
+  PaymentStatus (String: 'Pending' | 'Paid' | 'Failed', Required)
+  TransactionStatus (String: 'Initiated' | 'Completed' | 'Failed', Default: 'Initiated')
+  GatewaySessionId (String, Optional)
+  GatewayTransactionId (String, Optional)
+  UpiId (String, Optional; stored when PaymentMethod is 'UPI')
+  CardLast4 (String, Optional; stored when PaymentMethod is 'CARD')
+  Meta (Object, Optional; gateway-specific metadata)
+  CreatedAt (Timestamp)
+  UpdatedAt (Timestamp)
 
 
 6. FEATURE WORKFLOW (The "User Journey")
@@ -97,10 +115,13 @@ User views full product details including description, price, and farmer info.
 
 4. Order & Payment
 User clicks "Order Now" on a selected product and enters quantity.
-User selects a payment method (Cash on Delivery or UPI).
-- If COD is selected: Order is created with paymentStatus 'Pending'.
-- If UPI is selected: User must enter a valid UPI ID (format: name@upi). After entering UPI ID and clicking "Pay Now", the system simulates a successful payment (demo mode) and creates the order with paymentStatus 'Paid'.
-The system creates a new Order document in MongoDB with status 'Pending' and the selected payment method.
+User selects a payment method (Cash on Delivery, UPI, or Card).
+
+- If `COD` is selected: the simulated checkout confirms immediately and creates the order with `paymentStatus = 'Pending'` (payment is considered pending until delivery), and creates a corresponding `Transaction` with `transactionStatus = 'Completed'`.
+- If `UPI` is selected: the frontend first initiates a simulated payment gateway session via `/api/orders/checkout/initiate`, then confirms the payment via `/api/orders/checkout/confirm` (demo flow). On success, the backend creates both `Transaction` and `Order` with `paymentStatus = 'Paid'` and stores `upiId`.
+- If `CARD` is selected: the frontend similarly goes through `/api/orders/checkout/initiate` then `/api/orders/checkout/confirm`. On success, the backend creates both `Transaction` and `Order` with `paymentStatus = 'Paid'` and stores `cardLast4`.
+
+If the simulated UPI/CARD confirmation fails, the backend does not create the `Order`, but still records a `Transaction` with `paymentStatus = 'Failed'` and `transactionStatus = 'Failed'`.
 
 5. Farmer/Admin View
 Farmer/Admin refreshes dashboard and sees the new order.
@@ -112,7 +133,7 @@ After an order is placed:
 - The farmer can accept and pack orders that include their products and mark them as delivered when complete.
 - Admins can also view and update order statuses across the system.
 - Users see order status updates in their order history (Pending → Accepted → Packed → Delivered).
-- Payment method (COD/UPI) and UPI ID (if applicable) are displayed in admin and farmer order views.
+- Payment method (COD/UPI/CARD) and relevant payment identifiers (UPI ID and/or card last4, if applicable) are displayed in admin and farmer order views.
 
 Real-time Updates
 - The system supports Server-Sent Events (SSE) for real-time order status updates.
@@ -145,11 +166,18 @@ PUT /api/products/:id → Update product (Farmer/Admin - farmers can only update
 DELETE /api/products/:id → Delete product (Admin or product owner farmer)
 
 Orders
-POST /api/orders → Place new order (requires: items, paymentMethod; upiId required if paymentMethod is 'UPI')
+POST /api/orders → Legacy single-call order placement (requires: `items` and `paymentMethod`; `upiId` required if `paymentMethod` is `UPI`; `CARD` is supported as a simplified/legacy flow)
+POST /api/orders/checkout/initiate → Simulated gateway session init (requires: `items`, `paymentMethod`, and `paymentDetails` where `paymentDetails` is `{ upiId }` for UPI or `{ cardNumber, cardHolderName, expiryMonth, expiryYear, cvv }` for CARD)
+POST /api/orders/checkout/confirm → Simulated gateway confirm + finalizes checkout (requires: `items`, `paymentMethod`, `paymentDetails`, plus `gatewaySessionId`; UPI/CARD also pass `outcome` like `'SUCCESS'`)
 GET /api/orders/user → Get user orders (with optional status filter)
 GET /api/orders/farmer → Get farmer orders (only products from logged-in farmer, with optional status filter)
 GET /api/orders/subscribe/:orderId → Subscribe to real-time order status updates via Server-Sent Events (SSE)
 PUT /api/orders/:id/status → Update order status (Farmer/Admin)
+
+Transactions
+GET /api/transactions/customer → Get transactions for the logged-in customer
+GET /api/transactions/farmer → Get transactions that involve the logged-in farmer
+GET /api/transactions/admin → Get all transactions (admin)
 
 Admin
 GET /api/admin/roles → Get available user roles
