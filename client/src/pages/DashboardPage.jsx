@@ -2834,17 +2834,6 @@ function AdminOrders() {
     }
   }, [token])
 
-  const updateStatus = async (id, status) => {
-    try {
-      await api.put(`/api/orders/${id}/status`, { status })
-      await load()
-    } catch (err) {
-      alert(err.message)
-    }
-  }
-
-  
-
   if (loading) {
     return (
       <AdminLayout pageTitle="Orders">
@@ -2906,13 +2895,6 @@ function AdminOrders() {
                 </li>
               ))}
             </ul>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-              <button onClick={() => updateStatus(o._id, 'Accepted')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Accept</button>
-              <button onClick={() => updateStatus(o._id, 'Packed')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Pack</button>
-              <button onClick={() => updateStatus(o._id, 'Delivered')} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>Deliver</button>
-              
-            </div>
-            
             <small style={{ color: '#6c757d' }}>Created: {new Date(o.createdAt).toLocaleString()}</small>
           </div>
         ))}

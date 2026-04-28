@@ -1,328 +1,265 @@
-%% Project DFD (Data Flow Diagram) - MERN "Organic Farm Market"
-%% Mermaid diagrams are provided for easy reuse.
+﻿%% Project DFD (Data Flow Diagram) - MERN "Organic Farm Market"
 %% ============================================================
 
 %% =========================
-%% DFD Level 0 (Entire Project)
+%% DFD Level 0 (Context / System Boundary)
+%% Entities (data sources/sinks) â†” System
 %% =========================
 ```mermaid
-flowchart TD
-  %% External Actors
-  Customer["Customer Browser / Mobile"]:::ext
-  Farmer["Farmer Browser / Mobile"]:::ext
-  Admin["Admin Browser / Mobile"]:::ext
+flowchart LR
+  Customer["Customer"]
+  Farmer["Farmer"]
+  Admin["Admin"]
 
-  %% Frontend
-  UI["Frontend (React + Router + AuthContext)"]:::frontend
+  System["Organic Farm Market System"]
+  Customer -->|"Login / Register"| System
+  Customer -->|"Browse products"| System
+  Customer -->|"View product details"| System
+  Customer -->|"View product reviews"| System
+  Customer -->|"Check review eligibility"| System
+  Customer -->|"Submit a review"| System
+  Customer -->|"Place an order"| System
+  Customer -->|"Pay and confirm order"| System
+  Customer -->|"View my orders"| System
+  Customer -->|"View my transactions"| System
 
-  %% Backend API (Express)
-  API["Backend API (Express Routes + Middleware)"]:::backend
+  System -->|"Order status updates"| Customer
+  Farmer -->|"Manage my products"| System
+  Farmer -->|"View orders for my products"| System
+  Farmer -->|"Accept / Pack / Deliver"| System
+  Farmer -->|"View my transaction history"| System
+  System -->|"Order status updates"| Farmer
 
-  %% Data Store
-  DB["MongoDB (User, Product, Order, Transaction)"]:::db
+  Admin -->|"Approve farmers"| System
+  Admin -->|"Block / Unblock users"| System
+  Admin -->|"Manage users"| System
+  Admin -->|"Manage products"| System
+  Admin -->|"Manage all orders"| System
+  Admin -->|"View system stats"| System
+  Admin -->|"View all transactions"| System
+  Admin -->|"Update any order status"| System
 
-  %% Real-time updates
-  SSE["SSE Order Stream (/api/orders/subscribe/:orderId)"]:::realtime
-  Events["orderEvents (EventEmitter)"]:::internal
-
-  %% Payment Simulation
-  Gateway["Simulated Checkout Gateway (/checkout/initiate, /checkout/confirm)"]:::internal
-
-  %% Flows: Auth
-  Customer --> UI
-  Farmer --> UI
-  Admin --> UI
-  UI -->|JWT login/register/profile| API
-  API --> DB
-
-  %% Flows: Public/Role-based Product browsing
-  UI -->|GET /api/products| API
-  UI -->|GET /api/products/:id| API
-  API --> DB
-
-  %% Flows: Reviews (customer)
-  UI -->|GET /api/reviews/product/:id| API
-  UI -->|GET /api/reviews/can-review/:productId| API
-  UI -->|POST /api/reviews| API
-  API --> DB
-
-  %% Flows: Orders (customer checkout)
-  UI -->|POST /api/orders/checkout/initiate| API
-  UI -->|POST /api/orders/checkout/confirm| API
-  UI -->|POST /api/orders (legacy)| API
-  API --> Gateway
-  API --> DB
-
-  %% Flows: Order status updates (farmer/admin via dashboard)
-  UI -->|PUT /api/orders/:id/status| API
-  API --> Events
-
-  %% Flows: Real-time push back to customers/farmers/admins
-  API --> SSE
-  Events --> SSE
-  SSE --> UI
-
-  %% Flows: Orders & Transactions views by role
-  UI -->|GET /api/orders/user| API
-  UI -->|GET /api/orders/farmer| API
-  UI -->|GET /api/admin/orders| API
-  UI -->|GET /api/transactions/customer| API
-  UI -->|GET /api/transactions/farmer| API
-  UI -->|GET /api/transactions/admin| API
-  API --> DB
-
-  %% Admin oversight
-  UI -->|PUT /api/admin/users/:id/approve| API
-  UI -->|PUT /api/admin/users/:id/block| API
-  UI -->|DELETE /api/admin/users/:id| API
-  UI -->|Admin products/orders/users/stats CRUD| API
-  API --> DB
-
-  classDef ext fill:#fff,stroke:#333,stroke-width:1px;
-  classDef frontend fill:#e6f7ff,stroke:#006d75,stroke-width:1px;
-  classDef backend fill:#fff7e6,stroke:#ad6b00,stroke-width:1px;
-  classDef db fill:#f5f5f5,stroke:#555,stroke-width:1px;
-  classDef realtime fill:#ffe6e6,stroke:#cc0000,stroke-width:1px;
-  classDef internal fill:#f0fff4,stroke:#2b8a3e,stroke-width:1px;
+  System -->|"Order status updates for admin"| Admin
 ```
 
 %% =========================
-%% DFD Level 1 (Modules & Major Data Stores)
+%% DFD Level 1 (Decomposition)
+%% Left: data sources/entities | Middle: processes | Right: data stores/databases
 %% =========================
 ```mermaid
-flowchart TD
-  %% Actors
-  Customer["Customer"]:::ext
-  Farmer["Farmer"]:::ext
-  Admin["Admin"]:::ext
+flowchart LR
+  Customer["Customer"]
+  Farmer["Farmer"]
+  Admin["Admin"]
+  AuthProcess((Authentication))
+  ProductProcess((Product catalog & CRUD))
+  ReviewProcess((Product reviews))
+  CheckoutProcess((Checkout & payment simulation))
+  OrderQueryProcess((Order listing & filtering))
+  OrderStatusProcess((Update order status))
+  SSEProcess((Real-time order updates))
+  TxnProcess((Transaction history))
+  AdminProcess((Admin oversight & controls))
+  UserDB[(User)]
+  ProductDB[(Product)]
+  OrderDB[(Order)]
+  ReviewDB[(Review)]
+  TransactionDB[(Transaction)]
+  Customer -->|"Login / Register"| AuthProcess
+  AuthProcess --> UserDB
 
-  %% Frontend modules
-  AuthUI["Frontend Auth UI (login/register/profile sync)"]:::frontend
-  ProdUI["Frontend Product UI (browse, details, reviews)"]:::frontend
-  CustDash["Customer Dashboard UI (orders, transactions, order status)"]:::frontend
-  FarmerDash["Farmer Dashboard UI (fulfillment, products/orders)"]:::frontend
-  AdminDash["Admin Dashboard UI (approval/blocking, manage all)"]:::frontend
+  Customer -->|"Browse products"| ProductProcess
+  Customer -->|"View product details"| ProductProcess
+  Farmer -->|"Manage my products"| ProductProcess
+  Admin -->|"Manage products"| ProductProcess
+  ProductProcess --> ProductDB
+  ProductProcess --> UserDB
 
-  %% Backend route modules
-  AuthAPI["Auth/Profile API (/api/auth)"]:::backend
-  ProductAPI["Products API (/api/products)"]:::backend
-  ReviewAPI["Reviews API (/api/reviews)"]:::backend
-  OrderAPI["Orders API (/api/orders) incl. checkout & SSE"]:::backend
-  TransactionAPI["Transactions API (/api/transactions)"]:::backend
-  AdminAPI["Admin API (/api/admin)"]:::backend
-  FarmerAPI["Farmer API (/api/farmer)"]:::backend
-  CustomerAPI["Customer API (/api/customer)"]:::backend
+  Customer -->|"View product reviews"| ReviewProcess
+  Customer -->|"Check review eligibility"| ReviewProcess
+  Customer -->|"Submit a review"| ReviewProcess
+  ReviewProcess --> ReviewDB
+  ReviewProcess --> ProductDB
+  ReviewProcess --> UserDB
 
-  %% Simulated checkout gateway (internal)
-  Gateway["Simulated Checkout Gateway"]:::internal
+  Customer -->|"Place an order"| CheckoutProcess
+  CheckoutProcess --> ProductDB
+  CheckoutProcess --> UserDB
+  CheckoutProcess --> OrderDB
+  CheckoutProcess --> TransactionDB
 
-  %% Real-time
-  SSE["SSE Stream (/api/orders/subscribe/:orderId)"]:::realtime
-  Events["orderEvents EventEmitter"]:::internal
+  Customer -->|"View my orders"| OrderQueryProcess
+  Farmer -->|"View orders for my products"| OrderQueryProcess
+  Admin -->|"Manage all orders"| OrderQueryProcess
+  OrderQueryProcess --> OrderDB
+  OrderQueryProcess --> UserDB
+  OrderQueryProcess --> ProductDB
 
-  %% Data Store
-  DB["MongoDB Data Store"]:::db
+  Farmer -->|"Accept / Pack / Deliver"| OrderStatusProcess
+  Admin -->|"Update any order status"| OrderStatusProcess
+  OrderStatusProcess --> OrderDB
+  OrderStatusProcess --> SSEProcess
 
-  %% Frontend -> Backend
-  Customer --> AuthUI
-  Customer --> ProdUI
-  Customer --> CustDash
-  Farmer --> FarmerDash
-  Admin --> AdminDash
+  Customer -->|"Subscribe to order updates"| SSEProcess
+  Farmer -->|"Subscribe to order updates"| SSEProcess
+  Admin -->|"Subscribe for admin updates"| SSEProcess
+  SSEProcess --> OrderDB
+  SSEProcess --> Customer
+  SSEProcess --> Farmer
+  SSEProcess --> Admin
 
-  AuthUI -->|JWT| AuthAPI
-  ProdUI --> ProductAPI
-  ProdUI --> ReviewAPI
+  Customer -->|"View my transactions"| TxnProcess
+  Farmer -->|"View my transaction history"| TxnProcess
+  Admin -->|"View all transactions"| TxnProcess
+  TxnProcess --> TransactionDB
+  TxnProcess --> UserDB
 
-  CustDash -->|Order placement & history| OrderAPI
-  CustDash -->|Transactions history| TransactionAPI
-  CustDash -->|Subscribe SSE| SSE
-
-  FarmerDash --> FarmerAPI
-  FarmerDash -->|Orders list + status update| OrderAPI
-  FarmerDash -->|Transactions history| TransactionAPI
-  FarmerDash --> SSE
-
-  AdminDash --> AdminAPI
-  AdminDash -->|All orders/products/users/stats| AdminAPI
-  AdminDash -->|Transactions history| TransactionAPI
-
-  %% Backend -> Internal modules
-  OrderAPI --> Gateway
-  OrderAPI --> Events
-
-  %% Backend -> Data Store
-  AuthAPI --> DB
-  ProductAPI --> DB
-  ReviewAPI --> DB
-  OrderAPI --> DB
-  TransactionAPI --> DB
-  AdminAPI --> DB
-  FarmerAPI --> DB
-  CustomerAPI --> DB
-
-  %% Real-time SSE updates
-  Events --> SSE
-  SSE --> CustDash
-  SSE --> FarmerDash
-  SSE --> AdminDash
-
-  classDef ext fill:#fff,stroke:#333,stroke-width:1px;
-  classDef frontend fill:#e6f7ff,stroke:#006d75,stroke-width:1px;
-  classDef backend fill:#fff7e6,stroke:#ad6b00,stroke-width:1px;
-  classDef db fill:#f5f5f5,stroke:#555,stroke-width:1px;
-  classDef realtime fill:#ffe6e6,stroke:#cc0000,stroke-width:1px;
-  classDef internal fill:#f0fff4,stroke:#2b8a3e,stroke-width:1px;
-```
-
-%% ============================================================
-%% DFD Level 1.x (Role-based: Admin, Farmer, Customer)
-%% ============================================================
-
-%% =========================
-%% DFD Level 1.1 (Customer Modules)
-%% =========================
-```mermaid
-flowchart TD
-  Customer["Customer"]:::ext
-  UI["Customer-facing UI (Products + Details + Dashboard)"]:::frontend
-  API["Backend Orders/Products/Reviews/Transactions APIs"]:::backend
-  DB["MongoDB"]:::db
-  SSE["SSE: /api/orders/subscribe/:orderId"]:::realtime
-  Events["orderEvents"]:::internal
-  Gateway["Simulated Checkout Gateway"]:::internal
-
-  %% Browse & Details
-  UI -->|GET /api/products| API
-  UI -->|GET /api/products/:id| API
-  API --> DB
-
-  %% Reviews (eligible after delivered)
-  UI -->|GET /api/reviews/product/:id| API
-  UI -->|GET /api/reviews/can-review/:productId| API
-  UI -->|POST /api/reviews| API
-  API --> DB
-
-  %% Checkout (COD / UPI / CARD)
-  UI -->|POST /api/orders/checkout/initiate| API
-  UI -->|POST /api/orders/checkout/confirm| API
-  UI -->|POST /api/orders (legacy)| API
-  API --> Gateway
-  API --> DB
-
-  %% Persisted Outcomes
-  DB -->|Order (paymentMethod, paymentStatus, optional upiId/cardLast4)| API
-  DB -->|Transaction ledger for the order| API
-
-  %% Subscribe for status updates (Pending -> Accepted -> Packed -> Delivered)
-  UI -->|SSE subscribe with JWT token (header or ?token=)| SSE
-  Events --> SSE
-  SSE --> UI
-
-  %% Customer history views
-  UI -->|GET /api/orders/user?status=...| API
-  UI -->|GET /api/transactions/customer| API
-  API --> DB
-
-  classDef ext fill:#fff,stroke:#333,stroke-width:1px;
-  classDef frontend fill:#e6f7ff,stroke:#006d75,stroke-width:1px;
-  classDef backend fill:#fff7e6,stroke:#ad6b00,stroke-width:1px;
-  classDef db fill:#f5f5f5,stroke:#555,stroke-width:1px;
-  classDef realtime fill:#ffe6e6,stroke:#cc0000,stroke-width:1px;
-  classDef internal fill:#f0fff4,stroke:#2b8a3e,stroke-width:1px;
+  Admin -->|"Approve farmers"| AdminProcess
+  Admin -->|"Block / Unblock users"| AdminProcess
+  Admin -->|"Manage users"| AdminProcess
+  Admin -->|"View system stats"| AdminProcess
+  AdminProcess --> UserDB
+  AdminProcess --> ProductDB
+  AdminProcess --> OrderDB
+  AdminProcess --> TransactionDB
 ```
 
 %% =========================
-%% DFD Level 1.2 (Farmer Modules)
+%% DFD Level 1.1 (Customer)
 %% =========================
 ```mermaid
-flowchart TD
-  Farmer["Farmer"]:::ext
-  UI["Farmer-facing UI (Dashboard + Products + Fulfillment)"]:::frontend
-  API["Backend Farmer/Orders/Products/Transactions APIs"]:::backend
-  DB["MongoDB"]:::db
-  SSE["SSE: /api/orders/subscribe/:orderId"]:::realtime
-  Events["orderEvents"]:::internal
+flowchart LR
+  Customer["Customer"]
 
-  %% View and manage farmer products
-  UI -->|GET /api/farmer/products| API
-  UI -->|POST /api/products (create owned products)| API
-  UI -->|PUT /api/products/:id (update owned product)| API
-  UI -->|DELETE /api/products/:id (delete owned product)| API
-  API --> DB
+  AuthProcess((Authentication))
+  ProductProcess((Products & details))
+  ReviewProcess((Reviews))
+  CheckoutProcess((Checkout & payment simulation))
+  OrderQueryProcess((My orders))
+  SSEProcess((Order updates))
+  TxnProcess((My transactions))
 
-  %% Farmer orders for own products
-  UI -->|GET /api/orders/farmer?status=...| API
-  API --> DB
+  UserDB[(User)]
+  ProductDB[(Product)]
+  OrderDB[(Order)]
+  ReviewDB[(Review)]
+  TransactionDB[(Transaction)]
 
-  %% Fulfillment updates (status progression)
-  UI -->|PUT /api/orders/:id/status (Accept/Packed/Delivered)| API
-  API --> Events
+  Customer -->|"Login / Register"| AuthProcess
+  AuthProcess --> UserDB
 
-  %% Farmer transaction history
-  UI -->|GET /api/transactions/farmer| API
-  API --> DB
+  Customer -->|"Browse products"| ProductProcess
+  Customer -->|"View product details"| ProductProcess
+  ProductProcess --> ProductDB
+  ProductProcess --> UserDB
 
-  %% Optional real-time updates
-  UI -->|SSE subscribe (authorized for orders containing farmer's products)| SSE
-  Events --> SSE
-  SSE --> UI
+  Customer -->|"View product reviews"| ReviewProcess
+  Customer -->|"Check review eligibility"| ReviewProcess
+  Customer -->|"Submit a review"| ReviewProcess
+  ReviewProcess --> ReviewDB
+  ReviewProcess --> ProductDB
+  ReviewProcess --> UserDB
 
-  classDef ext fill:#fff,stroke:#333,stroke-width:1px;
-  classDef frontend fill:#e6f7ff,stroke:#006d75,stroke-width:1px;
-  classDef backend fill:#fff7e6,stroke:#ad6b00,stroke-width:1px;
-  classDef db fill:#f5f5f5,stroke:#555,stroke-width:1px;
-  classDef realtime fill:#ffe6e6,stroke:#cc0000,stroke-width:1px;
-  classDef internal fill:#f0fff4,stroke:#2b8a3e,stroke-width:1px;
+  Customer -->|"Place an order"| CheckoutProcess
+  CheckoutProcess --> ProductDB
+  CheckoutProcess --> UserDB
+  CheckoutProcess --> OrderDB
+  CheckoutProcess --> TransactionDB
+
+  Customer -->|"View my orders"| OrderQueryProcess
+  OrderQueryProcess --> OrderDB
+  OrderQueryProcess --> ProductDB
+  OrderQueryProcess --> UserDB
+
+  Customer -->|"Subscribe to order updates"| SSEProcess
+  SSEProcess --> OrderDB
+  SSEProcess --> Customer
+
+  Customer -->|"View my transactions"| TxnProcess
+  TxnProcess --> TransactionDB
+  TxnProcess --> UserDB
 ```
 
 %% =========================
-%% DFD Level 1.3 (Admin Modules)
+%% DFD Level 1.2 (Farmer)
 %% =========================
 ```mermaid
-flowchart TD
-  Admin["Admin"]:::ext
-  UI["Admin-facing UI (Oversight Dashboard)"]:::frontend
-  API["Backend Admin APIs"]:::backend
-  DB["MongoDB"]:::db
-  SSE["SSE: /api/orders/subscribe/:orderId (authorized)"]:::realtime
-  Events["orderEvents"]:::internal
+flowchart LR
+  Farmer["Farmer"]
 
-  %% Farmer approval / blocking controls (trust gate)
-  UI -->|GET /api/admin/users| API
-  UI -->|PUT /api/admin/users/:id/approve| API
-  UI -->|PUT /api/admin/users/:id/block| API
-  UI -->|DELETE /api/admin/users/:id| API
-  API --> DB
+  ProductProcess((Manage my products))
+  OrderQueryProcess((Orders for my products))
+  OrderStatusProcess((Accept / Pack / Deliver))
+  SSEProcess((Order updates))
+  TxnProcess((Transaction history))
 
-  %% Admin manages products and sees unapproved farmer products
-  UI -->|GET /api/admin/products| API
-  API --> DB
+  UserDB[(User)]
+  ProductDB[(Product)]
+  OrderDB[(Order)]
+  TransactionDB[(Transaction)]
 
-  %% Admin manages orders across system
-  UI -->|GET /api/admin/orders| API
-  UI -->|PUT /api/orders/:id/status| API
-  API --> Events
-  API --> DB
+  Farmer -->|"Manage my products"| ProductProcess
+  ProductProcess --> ProductDB
+  ProductProcess --> UserDB
 
-  %% Admin stats and role-based dashboards
-  UI -->|GET /api/admin/stats| API
-  API --> DB
+  Farmer -->|"View orders for my products"| OrderQueryProcess
+  OrderQueryProcess --> OrderDB
+  OrderQueryProcess --> ProductDB
+  OrderQueryProcess --> UserDB
 
-  %% Admin sees transaction ledger
-  UI -->|GET /api/transactions/admin| API
-  API --> DB
+  Farmer -->|"Accept / Pack / Deliver"| OrderStatusProcess
+  OrderStatusProcess --> OrderDB
+  OrderStatusProcess --> SSEProcess
 
-  %% Optional real-time order updates
-  UI -->|SSE subscribe (authorized)| SSE
-  Events --> SSE
-  SSE --> UI
+  Farmer -->|"Subscribe to order updates"| SSEProcess
+  SSEProcess --> OrderDB
+  SSEProcess --> Farmer
 
-  classDef ext fill:#fff,stroke:#333,stroke-width:1px;
-  classDef frontend fill:#e6f7ff,stroke:#006d75,stroke-width:1px;
-  classDef backend fill:#fff7e6,stroke:#ad6b00,stroke-width:1px;
-  classDef db fill:#f5f5f5,stroke:#555,stroke-width:1px;
-  classDef realtime fill:#ffe6e6,stroke:#cc0000,stroke-width:1px;
-  classDef internal fill:#f0fff4,stroke:#2b8a3e,stroke-width:1px;
+  Farmer -->|"View my transaction history"| TxnProcess
+  TxnProcess --> TransactionDB
+  TxnProcess --> UserDB
 ```
 
+%% =========================
+%% DFD Level 1.3 (Admin)
+%% =========================
+```mermaid
+flowchart LR
+  Admin["Admin"]
+
+  AdminProcess((Admin oversight & controls))
+  OrderQueryProcess((Manage all orders))
+  OrderStatusProcess((Update any order status))
+  SSEProcess((Order updates))
+  TxnProcess((View all transactions))
+
+  UserDB[(User)]
+  ProductDB[(Product)]
+  OrderDB[(Order)]
+  TransactionDB[(Transaction)]
+
+  Admin -->|"Approve farmers"| AdminProcess
+  Admin -->|"Block / Unblock users"| AdminProcess
+  Admin -->|"Manage users"| AdminProcess
+  AdminProcess --> UserDB
+
+  Admin -->|"Manage products"| AdminProcess
+  AdminProcess --> ProductDB
+
+  Admin -->|"Manage all orders"| OrderQueryProcess
+  OrderQueryProcess --> OrderDB
+  OrderQueryProcess --> UserDB
+  OrderQueryProcess --> ProductDB
+
+  Admin -->|"Update any order status"| OrderStatusProcess
+  OrderStatusProcess --> OrderDB
+  OrderStatusProcess --> SSEProcess
+
+  Admin -->|"Subscribe for admin updates"| SSEProcess
+  SSEProcess --> OrderDB
+  SSEProcess --> Admin
+
+  Admin -->|"View all transactions"| TxnProcess
+  TxnProcess --> TransactionDB
+  TxnProcess --> UserDB
+```
